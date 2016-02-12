@@ -128,7 +128,9 @@ while jj_ > 0
     
     jj_ = jj_ - 1;
 end
-
+% calculate the error
+[SOLVER_PERS_.eEst, ~] = ee_skelboe2000(...
+        [y_ SOL], dt_(1:end-1), sysIndex_-1, relTol,  SYS_PERS.solver.yTypical);
 % save solution
 SYS_PERS.sol.y(:,1:sysIndex_) = y_;
 SYS_PERS.sol.dt(1:sysIndex_-1) = dt_(1:end-1);

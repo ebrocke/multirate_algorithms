@@ -1,4 +1,6 @@
-%% Point extrapolation (Lagrangian representation)
+%% Point approximation (Lagrangian representation)
+% rows are time series
+% columns are variables
 function y0 = approximate(x,y,x0)
 n = length(x);
 y0 = zeros(1,size(y,2));

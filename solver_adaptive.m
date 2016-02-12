@@ -39,6 +39,7 @@ P_ERK.solver.yTypical = yTypical(1:erkSize);
 P_ERK.controller.eEstVec = 0;
 P_ERK.controller.rhofac = 0;
 P_ERK.controller.eEst = 0;
+P_ERK.controller.h = 1e-5; % calculated by the local controller
 % system working variables
 P_ERK.sys.t_exch = zeros(1,MODE); %store last exchanged values
 P_ERK.sys.y_exch = zeros(MODE,2); % in a reversed order of time
@@ -47,6 +48,7 @@ P_ERK.sys.method_hdl = erkSys{1}; % BDF_DEF BDF_AS RK4 CrankNicStagg;
 P_ERK.sys.exch_hdl = erkSys{2}; % system function that provides exchanged variables
 P_ERK.sys.isolver_hdl = erkSys{3};% how to solve interval (used in multirate)
 P_ERK.sys.ode_hdl = @ode_erk; % handle to the system ode functions
+P_ERK.sys.h = 1e-5; % suggested by the global controller
 % store system solution
 P_ERK.sol.y = zeros(erkSize,mem_size);
 P_ERK.sol.dt = zeros(1,mem_size);
@@ -67,13 +69,14 @@ P_CELL.sol.y(:,1) = initVals(erkSize+1:end)';
 P_CELL.controller.eEst = 0;
 P_CELL.controller.eEstVec = 0;
 P_CELL.controller.rhofac = 0;
-P_CELL.controller.optimal_dt = 1e-5;
+P_CELL.controller.h = 1e-5;
 P_CELL.sys.method_hdl = cellSys{1};
 P_CELL.sys.exch_hdl = cellSys{2};
 P_CELL.sys.isolver_hdl = cellSys{3};
 P_CELL.sys.ode_hdl = @ode_cell;
 P_CELL.sys.t_exch = zeros(1,MODE);
 P_CELL.sys.y_exch = zeros(MODE,2);
+P_CELL.sys.h = 1e-5; % suggested by the global controller
 
 
 PERS.ERK = P_ERK;
@@ -81,20 +84,20 @@ PERS.CELL = P_CELL;
 PERS.yTypical = yTypical;
 
 yTypical = abs(yTypical);
-dt_optimal_ = 1e-5;
+H_ = 1e-5;
 
 % We save last three system solutions
 % is the error estimation
 y_ = zeros(length(initVals),3);
 dt_ = zeros(1,3);
 y_(:,end) = initVals;
-dt_(end) = dt_optimal_;
+dt_(end) = H_;
 
 sysIndex_ = 0;
 
 if multirate
-    ysize = erkSize;
-    yTypical = P_ERK.solver.yTypical;
+   ysize = erkSize;
+   yTypical = P_ERK.solver.yTypical;
 else
     ysize = length(yTypical);
 end
@@ -110,27 +113,31 @@ while t_ < tEnd
     end
     
     % Calculate the solution
-    [sol_,  PERS] = solve_sys([t_ t_ + dt_optimal_],...
+    [sol_,  PERS] = solve_sys([t_ t_ + H_],...
         relTol, step_rejected_, PERS);
-    
-    [dt_optimal_, step_rejected_, P_ERK.controller] = ec_h211b(...
-        [y_(1:ysize,:) sol_(1:ysize)], dt_, sysIndex_,...
-        relTol, yTypical, PERS.CELL.controller.eEst, P_ERK.controller);
+    % calculate the error
+    [eEst_, ~] = ee_skelboe2000(...
+        [y_(1:ysize,:) sol_(1:ysize)], dt_, sysIndex_, relTol, yTypical);
+    % calculate the time steps
+    [H_, PERS.CELL.sys.h, step_rejected_, P_ERK.controller] = ec_h211b(...
+        dt_, sysIndex_,...
+        max(PERS.CELL.controller.eEst, eEst_),...
+        P_ERK.controller);
 
     if (step_rejected_)
-        dt_(end) = dt_optimal_;
+        dt_(end) = H_;
         sysIndex_ = sysIndex_ - 1;
     else
         t_ = t_ + dt_(end);
         dt_=circshift(dt_,[0,-1]);
         y_=circshift(y_,[0,-1]);
-        dt_(end) = dt_optimal_;
+        dt_(end) = H_;
         y_(:,end) = sol_;
     end
     
     % Ensure that we dont leave the interval
-    if t_ + dt_optimal_ > tEnd  
-        dt_optimal_ = tEnd-t_;
+    if t_ + H_ > tEnd  
+        H_ = tEnd-t_;
     end
     
     % add check up for memory allocation in the solution vectors

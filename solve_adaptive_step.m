@@ -20,7 +20,9 @@ sysIndex_ = SYS_PERS.stats.acceptedIter+1;
 % solution vector 
 y_ = SYS_PERS.sol.y(:,1:sysIndex_);
 dt_ = SYS_PERS.sol.dt(1:sysIndex_);
-dt_(end) = SYS_PERS.controller.optimal_dt;
+% optimal time step has been calculated by
+% the local controller during the last micro time step
+dt_(end) = SYS_PERS.controller.h;
 
 t_ = t(1);
 tEnd = t(2);
@@ -55,7 +57,7 @@ if(step_rejected)
     end
     
     merge = 0;
-    if (abs(tEnd - SOLVER_PERS_.t(i)) < 1e-10)
+    if (abs(tEnd - SOLVER_PERS_.t(i)) < 1e-7)
         i = i -1;
         merge  = 1;
     end
@@ -71,9 +73,9 @@ if(step_rejected)
     dt_ = dt_(1:end-rejected_iter_);
     y_ = y_(:,1:end-rejected_iter_);
     
-%     if (merge)
-%         dt_(end) = (tEnd - t_);
-%     end
+    if (merge)
+        dt_(end) = (tEnd - t_);
+    end
     
    
     % update the history of the microtime steps
@@ -118,9 +120,12 @@ while t_ < tEnd
         varsTilde, relTol, SYS_PERS.solver, rejected_);
     stat=stat+stat_;
     
+    % calculate the error
+    [SOLVER_PERS_.eEst, ~] = ee_skelboe2000(...
+        [y_ SOL], dt_, sysIndex_, relTol,  SYS_PERS.solver.yTypical);
     % Update time and timestep
-    [new_dt_,  rejected_, SOLVER_PERS_] = ec_h211b([y_ SOL],...
-        dt_, sysIndex_, relTol, SYS_PERS.solver.yTypical, 0, SOLVER_PERS_ );
+    [new_dt_,  rejected_, SOLVER_PERS_] = ec_h211b(...
+        dt_, sysIndex_, SOLVER_PERS_.eEst, SOLVER_PERS_ );
     
     if (rejected_)
         dt_(end) = new_dt_;
@@ -143,7 +148,7 @@ SYS_PERS.sol.y(:,1:sysIndex_) = y_;
 SYS_PERS.sol.dt(1:sysIndex_-1) = dt_(1:end-1);
 % save controller workspace
 SYS_PERS.controller = SOLVER_PERS_;
-SYS_PERS.controller.optimal_dt = new_dt_;
+SYS_PERS.controller.h = new_dt_;
 % update statistics
 SYS_PERS.stats.acceptedIter = sysIndex_-1;
 SYS_PERS.stats.refinedIter = SYS_PERS.stats.refinedIter + refined_iter_;
