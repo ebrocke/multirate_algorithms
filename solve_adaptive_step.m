@@ -1,32 +1,37 @@
-function [SOL, SYS_PERS]=solve_interval_adaptive_step(solver, ...
-    t, ...
-    ode_fun, ...
+function [SOL, SYS_PERS]=solve_adaptive_step(t, ...
     vars, ...
     relTol, ...
-    SYS_PERS, ...
-    step_rejected)
+    step_rejected,...
+    SYS_PERS)
 
-persistent SOLVER_PERS_
-varsTilde = vars{1};
-dtTilde = vars{2};
+t_vars = vars{1};
+y_vars = vars{2};
 
-if (any(isnan(varsTilde)))
+if (any(isnan(y_vars)))
     SOL = NaN(size(SYS_PERS.sol.y,1),1);
     return;
 end
 
-sysIndex = SYS_PERS.stats.acceptedIter+1;
-dt_ = SYS_PERS.sol.dt(1:sysIndex-1);
-dt_(end+1) = SYS_PERS.controller.optimal_dt;
-y_ = SYS_PERS.sol.y(:,1:sysIndex);
+% controller workspace
+SOLVER_PERS_ = SYS_PERS.controller;
+
+sysIndex_ = SYS_PERS.stats.acceptedIter+1;
+
+% solution vector 
+y_ = SYS_PERS.sol.y(:,1:sysIndex_);
+dt_ = SYS_PERS.sol.dt(1:sysIndex_);
+dt_(end) = SYS_PERS.controller.optimal_dt;
 
 t_ = t(1);
 tEnd = t(2);
 
+rejected_iter_ = 0;
+refined_iter_ = 0;
+solver = SYS_PERS.sys.method_hdl;
 % initialization of the persistant variables SOLVER_PERS_
 % that contains the history of step size controller parameters
 % of the taken micro timesteps (only the last macro time step is saved).
-if( sysIndex == 1)
+if( sysIndex_ == 1)
     
     SOLVER_PERS_.eEstVec = [NaN NaN NaN];
     SOLVER_PERS_.rhofac = 0;
@@ -56,23 +61,21 @@ if(step_rejected)
     end
     
     % number of rejected micro timesteps
-    k = length(SOLVER_PERS_.t)-i;
+    rejected_iter_ = length(SOLVER_PERS_.t)-i;
     %number of total rejected micro timesteps
-    SYS_PERS.stats.rejectedIter =  SYS_PERS.stats.rejectedIter + k;
-    SYS_PERS.stats.acceptedIter =  SYS_PERS.stats.acceptedIter - k;
+   
+    sysIndex_ =  sysIndex_ - rejected_iter_;
     
     t_ = SOLVER_PERS_.t(i);
     %remove rejected solutions
-    dt_ = dt_(1:end-k);
+    dt_ = dt_(1:end-rejected_iter_);
+    y_ = y_(:,1:end-rejected_iter_);
     
-    if (merge)
-        dt_(end) = (tEnd - t_);
-    end
+%     if (merge)
+%         dt_(end) = (tEnd - t_);
+%     end
     
-    y_ = y_(:,1:end-k);
-    
-    %t_ = SOLVER_PERS_.t(i);
-    
+   
     % update the history of the microtime steps
     SOLVER_PERS_.eEstVec = SOLVER_PERS_.eEstVec_(i,:);
     SOLVER_PERS_.rhofac = SOLVER_PERS_.rhofac_(i);
@@ -93,8 +96,10 @@ end
 stat_=zeros(1,3);
 stat=zeros(1,3);
 
+
 % micro timestepping
 rejected_ = false;
+
 
 while t_ < tEnd
     
@@ -103,47 +108,48 @@ while t_ < tEnd
         dt_(end) = tEnd-t_;
     end
 
-    varsTilde_ = interpolate(varsTilde, dtTilde, t_ + dt_(end) - t(1));
+    varsTilde = approximate(t_vars, y_vars,  -(t_-t(1)+dt_(end)));
     
     % Calculate the solution
-    [SOL, stat_(1), stat_(2), stat_(3), SYS_PERS.solver] = solver ([t_ t_+dt_(end)],...
+    [SOL, stat_(1), stat_(2), stat_(3), SYS_PERS.solver] = solver (...
+        [t_ t_+dt_(end)],...
         y_, dt_,...
-        ode_fun, varsTilde_, ...
-        relTol, SYS_PERS.solver, rejected_);
+        SYS_PERS.sys.ode_hdl,...
+        varsTilde, relTol, SYS_PERS.solver, rejected_);
     stat=stat+stat_;
     
     % Update time and timestep
-    [new_dt,  rejected_, SOLVER_PERS_] = error_control([y_ SOL],...
-        dt_, sysIndex, relTol, SYS_PERS.solver.yTypical, SOLVER_PERS_, 0 );
+    [new_dt_,  rejected_, SOLVER_PERS_] = ec_h211b([y_ SOL],...
+        dt_, sysIndex_, relTol, SYS_PERS.solver.yTypical, 0, SOLVER_PERS_ );
     
     if (rejected_)
-        dt_(end) = new_dt;
-        sysIndex = sysIndex - 1;
-        SYS_PERS.stats.refinedIter = SYS_PERS.stats.refinedIter + 1;
+        dt_(end) = new_dt_;
+        refined_iter_ = refined_iter_ + 1;
     else
-        SYS_PERS.stats.acceptedIter = SYS_PERS.stats.acceptedIter + 1;
+        % allocatoin of memory should be considered
         t_ = t_ + dt_(end);
         SOLVER_PERS_.t(end+1) = t_;
         SOLVER_PERS_.eEstVec_(end+1,:)= SOLVER_PERS_.eEstVec;
         SOLVER_PERS_.rhofac_(end+1) = SOLVER_PERS_.rhofac;
-        dt_(end+1) = new_dt;
+        dt_(end+1) = new_dt_;
         y_(:,end+1) = SOL;
+        sysIndex_ = sysIndex_ + 1;
     end
-    sysIndex = sysIndex + 1;
+   
 end
 
-sysIndex = SYS_PERS.stats.acceptedIter+1;
-if(sysIndex ~= size(y_,2))
-    stop = 0;
-end
-SYS_PERS.sol.y(:,1:sysIndex) = y_;
-SYS_PERS.sol.dt(1:sysIndex-1) = dt_(1:end-1);
-SYS_PERS.controller.optimal_dt = new_dt;
-SYS_PERS.controller.err = SOLVER_PERS_.err;
-
+% save solution
+SYS_PERS.sol.y(:,1:sysIndex_) = y_;
+SYS_PERS.sol.dt(1:sysIndex_-1) = dt_(1:end-1);
+% save controller workspace
+SYS_PERS.controller = SOLVER_PERS_;
+SYS_PERS.controller.optimal_dt = new_dt_;
+% update statistics
+SYS_PERS.stats.acceptedIter = sysIndex_-1;
+SYS_PERS.stats.refinedIter = SYS_PERS.stats.refinedIter + refined_iter_;
+SYS_PERS.stats.rejectedIter = SYS_PERS.stats.rejectedIter + rejected_iter_;
 SYS_PERS.stats.numjac = SYS_PERS.stats.numjac + stat(1);
 SYS_PERS.stats.n_ode_numjac = SYS_PERS.stats.n_ode_numjac + stat(2);
 SYS_PERS.stats.n_ode_iter = SYS_PERS.stats.n_ode_iter + stat(3);
-
 
 end
