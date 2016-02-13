@@ -122,10 +122,10 @@ while t_ < tEnd
     
     % calculate the error
     [SOLVER_PERS_.eEst, ~] = ee_skelboe2000(...
-        [y_ SOL], dt_, sysIndex_, relTol,  SYS_PERS.solver.yTypical);
+        [y_ SOL], dt_, relTol,  SYS_PERS.solver.yTypical);
     % Update time and timestep
     [new_dt_,  rejected_, SOLVER_PERS_] = ec_h211b(...
-        dt_, sysIndex_, SOLVER_PERS_.eEst, SOLVER_PERS_ );
+        dt_, SOLVER_PERS_.eEst, SOLVER_PERS_ );
     
     if (rejected_)
         dt_(end) = new_dt_;

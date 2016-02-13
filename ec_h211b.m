@@ -1,9 +1,6 @@
-% MAX_EEST :
-%   the maximum error value estimated by other controllers,
-%   valid in multirate
-%
-function [H_MACRO, H_MICRO STEP_REJECTED, PERSISTENT] = ec_h211b( DT, ...
-    SYS_INDEX,  E_EST,  PERSISTENT)
+
+function [H STEP_REJECTED PERSISTENT] = ec_h211b( DT, ...
+    E_EST,  PERSISTENT)
 
 % The limit for how much the steps are allowed to grow
 
@@ -13,38 +10,22 @@ dtMax = Inf;    % Maximum step size
 
 TOL = 1;        % Tolerance level for error
 
-eEstVec = PERSISTENT.eEstVec; % Estimations of last errors
-
-rhofac = PERSISTENT.rhofac; % Söderlind's limiter
 
 STEP_REJECTED = false;
 
-deuflhard = false;
+%deuflhard = false;
 
 q = 2;
 
-% both constants used for micro time step prediction
-hmax = 1e-2;
-mmax = 2;
 
-
-%     H_MACRO = DT(end)/2;
-%     H_MICRO = PERSISTENT.H_MICRO/2;
-%
-%     %     if (any(isnan(in(1:erkSize))))
-%     %         nanItersErk = nanItersErk+1;
-%     %     end
-%     %
-%     STEP_REJECTED = true;
-
-
-
-if SYS_INDEX > 1  % for later steps, find the error estimate
+if PERSISTENT.init > 0  % for later steps, find the error estimate
+    eEstVec = PERSISTENT.eEstVec; % Estimations of last errors
     
-    if(SYS_INDEX == 2)
-        
+    if(PERSISTENT.init == 1)
         rhofac = DT(end)/DT(end-1);
-        
+    else
+        rhofac = PERSISTENT.rhofac; % Söderlind's limiter
+
     end
     
     
@@ -103,59 +84,51 @@ if SYS_INDEX > 1  % for later steps, find the error estimate
         
         
         
-        %         Deuflhard's controller
-        if (deuflhard)
-            
-            dtSuggest = DT(end)*(rho*TOL/eEstVec(3))^(a/p) * ... %Proportional part
-                (eEstVec(2)/(rho*TOL))^(b/p)* ... % Integrating part
-                (rho*TOL/eEstVec(1))^(c/p);     % Differenting part
-            
-            
-        else %         H211b controller by Söderlind
-            
-            rhofac = (rho*TOL/eEstVec(3))^(0.25/p) * ...
-                ((rho*TOL)/eEstVec(2))^(0.25/p)* ...
-                (rhofac)^(-0.25);
-            
-            kappa = 1;
-            
-            rhofac = kappa*atan((rhofac-1)/kappa)+1;
-            
-            dtSuggest = DT(end)*rhofac;
-        end
+        %         %         Deuflhard's controller
+        %         if (deuflhard)
+        %
+        %             dtSuggest = DT(end)*(rho*TOL/eEstVec(3))^(a/p) * ... %Proportional part
+        %                 (eEstVec(2)/(rho*TOL))^(b/p)* ... % Integrating part
+        %                 (rho*TOL/eEstVec(1))^(c/p);     % Differenting part
+        %
+        %
+        %         else %         H211b controller by Söderlind
         
-        H_MACRO = min([q*DT(end), dtMax, dtSuggest]);
-        H_MICRO = min(hmax, PERSISTENT.h / max(0.2, 1.25*eEstVec(3)^(-p)));
-        PERSISTENT.M = max(fix(PERSISTENT.M/1.5),max(mmax,fix(H_MACRO/H_MICRO)));
+        rhofac = (rho*TOL/eEstVec(3))^(0.25/p) * ...
+            ((rho*TOL)/eEstVec(2))^(0.25/p)* ...
+            (rhofac)^(-0.25);
         
+        kappa = 1;
         
+        rhofac = kappa*atan((rhofac-1)/kappa)+1;
+        
+        dtSuggest = DT(end)*rhofac;
+        %        end
+        
+        H = min([q*DT(end), dtMax, dtSuggest]);
+        
+        PERSISTENT.init = 2;
         STEP_REJECTED = false;
         
     else
         
-        %         Classical controller
-        if (deuflhard)
-            dtSuggest = DT(end)*(rho*TOL/eEstVec(3))^(a/p) * ... %Proportional part
-                (eEstVec(2)/(rho*TOL))^(b/p)* ... % Integrating part
-                (rho*TOL/eEstVec(1))^(c/p);
-            %                 %         H211b controller by Söderlind
-            %                 dtSuggest = DT(end)*(rho*TOL/eEstVec(3))^(0.25/p) * ...
-            %                                ((rho*TOL)/eEstVec(2))^(0.25/p)* ...
-            %                                (dt(end)/dt(end-1))^(-0.25);
-        else
-            dtSuggest = DT(end)*(rho*TOL/eEstVec(3))^(1/p);
-        end
+        %         %         Classical controller
+        %         if (deuflhard)
+        %             dtSuggest = DT(end)*(rho*TOL/eEstVec(3))^(a/p) * ... %Proportional part
+        %                 (eEstVec(2)/(rho*TOL))^(b/p)* ... % Integrating part
+        %                 (rho*TOL/eEstVec(1))^(c/p);
+        %             %                 %         H211b controller by Söderlind
+        %             %                 dtSuggest = DT(end)*(rho*TOL/eEstVec(3))^(0.25/p) * ...
+        %             %                                ((rho*TOL)/eEstVec(2))^(0.25/p)* ...
+        %             %                                (dt(end)/dt(end-1))^(-0.25);
+        %         else
+        dtSuggest = DT(end)*(rho*TOL/eEstVec(3))^(1/p);
+        %        end
         % rhofac = dt(end)/dt(end-1);
-        
-        
         
         %fold = (rho*TOL/eEstVec(3))^(1/p);
         
-        H_MACRO = min([q*DT(end), dtMax, dtSuggest]);
-        H_MICRO = PERSISTENT.h*max(.1,.8*eEstVec(3)^p);
-       
-        PERSISTENT.M=min(fix(1.15*PERSISTENT.M),...
-            max(mmax,fix(H_MACRO/H_MICRO)));
+        H = min([q*DT(end), dtMax, dtSuggest]);
         
         eEstVec = circshift(eEstVec',1)';
         
@@ -165,16 +138,14 @@ if SYS_INDEX > 1  % for later steps, find the error estimate
     
     
 else % For the first step, use Euler formula with no error estimation
-    
-    H_MACRO = DT(end);
-    PERSISTENT.M = mmax;
+    PERSISTENT.init = 1;
     eEstVec = [NaN rho*TOL rho*TOL];
+    rhofac = 0;
+    H = 1e-5;
     
 end
+PERSISTENT.h = H;
 PERSISTENT.eEstVec = eEstVec;
 PERSISTENT.rhofac = rhofac;
-
-H_MICRO=H_MACRO/PERSISTENT.M;
-PERSISTENT.h = H_MICRO;
 
 end

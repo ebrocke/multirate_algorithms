@@ -36,10 +36,9 @@ P_ERK.stats.n_ode_iter = 0;
 P_ERK.solver.init = true;
 P_ERK.solver.yTypical = yTypical(1:erkSize);
 % controller working variables
-P_ERK.controller.eEstVec = 0;
-P_ERK.controller.rhofac = 0;
 P_ERK.controller.eEst = 0;
-P_ERK.controller.h = 1e-5; % calculated by the local controller
+P_ERK.controller.init = 0;
+P_ERK.controller.h = 1e-5;
 % system working variables
 P_ERK.sys.t_exch = zeros(1,MODE); %store last exchanged values
 P_ERK.sys.y_exch = zeros(MODE,2); % in a reversed order of time
@@ -48,7 +47,6 @@ P_ERK.sys.method_hdl = erkSys{1}; % BDF_DEF BDF_AS RK4 CrankNicStagg;
 P_ERK.sys.exch_hdl = erkSys{2}; % system function that provides exchanged variables
 P_ERK.sys.isolver_hdl = erkSys{3};% how to solve interval (used in multirate)
 P_ERK.sys.ode_hdl = @ode_erk; % handle to the system ode functions
-P_ERK.sys.h = 1e-5; % suggested by the global controller
 % store system solution
 P_ERK.sol.y = zeros(erkSize,mem_size);
 P_ERK.sol.dt = zeros(1,mem_size);
@@ -66,9 +64,8 @@ P_CELL.stats.n_ode_iter = 0;
 P_CELL.sol.y = zeros(length(initVals)-erkSize,mem_size);
 P_CELL.sol.dt = zeros(1,mem_size);
 P_CELL.sol.y(:,1) = initVals(erkSize+1:end)';
+P_CELL.controller.init = 0;
 P_CELL.controller.eEst = 0;
-P_CELL.controller.eEstVec = 0;
-P_CELL.controller.rhofac = 0;
 P_CELL.controller.h = 1e-5;
 P_CELL.sys.method_hdl = cellSys{1};
 P_CELL.sys.exch_hdl = cellSys{2};
@@ -76,8 +73,7 @@ P_CELL.sys.isolver_hdl = cellSys{3};
 P_CELL.sys.ode_hdl = @ode_cell;
 P_CELL.sys.t_exch = zeros(1,MODE);
 P_CELL.sys.y_exch = zeros(MODE,2);
-P_CELL.sys.h = 1e-5; % suggested by the global controller
-
+P_CELL.sys.h = 1e-5;
 
 PERS.ERK = P_ERK;
 PERS.CELL = P_CELL;
@@ -93,7 +89,6 @@ dt_ = zeros(1,3);
 y_(:,end) = initVals;
 dt_(end) = H_;
 
-sysIndex_ = 0;
 
 if multirate
    ysize = erkSize;
@@ -104,29 +99,37 @@ end
 
 while t_ < tEnd
     
-    sysIndex_ = sysIndex_ + 1;
     
-    if(rem(sysIndex_, 1000)==0) % for displaying progress
+    if(rem(PERS.ERK.stats.acceptedIter, 1000)==0) % for displaying progress
         
-        sysIndex_, toc, t_
+         toc, t_
         
     end
     
     % Calculate the solution
-    [sol_,  PERS] = solve_sys([t_ t_ + H_],...
-        relTol, step_rejected_, PERS);
+    [sol_,  PERS] = solve_sys(...
+        [t_ t_ + H_], relTol, step_rejected_, PERS);
+    
     % calculate the error
     [eEst_, ~] = ee_skelboe2000(...
-        [y_(1:ysize,:) sol_(1:ysize)], dt_, sysIndex_, relTol, yTypical);
-    % calculate the time steps
-    [H_, PERS.CELL.sys.h, step_rejected_, P_ERK.controller] = ec_h211b(...
-        dt_, sysIndex_,...
+        [y_(1:ysize,:) sol_(1:ysize)], dt_, relTol, yTypical);
+    
+    % calculate the macro H_ and micro h_ time steps
+    [H_,  step_rejected_, P_ERK.controller] = ec_h211b(dt_, ...
         max(PERS.CELL.controller.eEst, eEst_),...
         P_ERK.controller);
+    
+    if (multirate)
+        [h_ P_CELL.controller] = ec_classical(H_,...
+            max(PERS.CELL.controller.eEst, eEst_),...
+            P_CELL.controller);
+        PERS.CELL.sys.h = h_;
+        [H_ h_ step_rejected_]
+    end
+    
 
     if (step_rejected_)
         dt_(end) = H_;
-        sysIndex_ = sysIndex_ - 1;
     else
         t_ = t_ + dt_(end);
         dt_=circshift(dt_,[0,-1]);

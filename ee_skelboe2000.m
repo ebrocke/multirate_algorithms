@@ -1,17 +1,21 @@
-function [ERR, ERR_INDEX] = ee_skelboe2000(Y, DT, SYS_INDEX, RELTOL, YTYPICAL)
+function [ERR, ERR_INDEX] = ee_skelboe2000(Y, DT, RELTOL, YTYPICAL)
 global MODE
-
 sol_ = Y (:,end); % the last element is the solution to evaluate
 if any(isnan(sol_))
     ERR = 1;
     ERR_INDEX = -1;
     return;
 end
-i_ = min(MODE,SYS_INDEX);
+i_ = min(MODE,length(find(DT)));
+if (i_ == 1) % we do not evaluate the first step
+    ERR = 0;
+    ERR_INDEX = -1;
+    return;
+end
 t_ = [0 cumsum(DT(end-i_+1:end-1))];
 y_ = Y(:, end-i_:end-1)';
 % we use 2d order approximation Skelboe(2000)
-Yp = approximate(t_, y_, t_(end)+DT(end));
+Yp = approximate(t_, y_, t_(end)+DT(end)); 
 [ERR, ERR_INDEX] = max(abs(sol_-Yp')./(RELTOL*(abs(sol_)+abs(YTYPICAL))));
 end
 % 
