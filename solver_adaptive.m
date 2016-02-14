@@ -124,7 +124,7 @@ while t_ < tEnd
             max(PERS.CELL.controller.eEst, eEst_),...
             P_CELL.controller);
         PERS.CELL.sys.h = h_;
-        [H_ h_ step_rejected_]
+        %[H_ h_ step_rejected_]
     end
     
 
