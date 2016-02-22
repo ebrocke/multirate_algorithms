@@ -16,7 +16,11 @@ STEP_REJECTED = false;
 %deuflhard = false;
 
 q = 2;
-
+if isnan(E_EST)
+    H = DT(end)/2;
+    STEP_REJECTED = true;
+    return
+end
 
 if PERSISTENT.init > 0  % for later steps, find the error estimate
     eEstVec = PERSISTENT.eEstVec; % Estimations of last errors

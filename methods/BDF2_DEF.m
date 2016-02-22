@@ -125,7 +125,8 @@ else  % step > 2
     Y0 = a1*Y_old+a2*Y_ancient + a3*Y(:,end-2);
     Y0_dot = (1/(beta*DT(end)))*(Y0 - alpha1*Y_old - alpha2*Y_ancient);
 
-    Delta_guess = DELTA_OLD(:,end) + gamma*(DELTA_OLD(:,end)-DELTA_OLD(:,end-1));
+    Delta_guess = DELTA_OLD(:,end) + ...
+        gamma*(DELTA_OLD(:,end)-DELTA_OLD(:,end-1));
 
 %        g = @(t,Delta) bsxfun(@minus,Delta, ...
 

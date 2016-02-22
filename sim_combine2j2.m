@@ -22,7 +22,7 @@ solvErkNM   = @BDF2_DEF;%@BDF2_DEF;%@BDF2_AS;%@RK4;
 isolvErk = @solve_one_step;
 % Cell system
 solvCellNM   = @BDF2_DEF;%@BDF2_DEF;%@BDF2_DEF;%@BDF2_AS;%@CrankNicStagg; 
-isolvCell = @solve_fixed_step;
+isolvCell = @solve_adaptive_step;
 
 odeslv = @solver_adaptive;
 %odeslv = @ode_solver_fixed;%@ode_solver_h211b; %ode_solver_fixed
@@ -31,7 +31,7 @@ slv_param = 1e-4;   % Relative tolerance for adaptive [ @ode_solver_h211b (1e-3)
 %slv_param = 2e5; 
                     
 %%%% Chosing model parameters
-T_SIM = 2;         % Total run time [s]
+T_SIM = 1.5;         % Total run time [s]
 
 %%%% Set up the parametrs
 setup_cell_parameters();

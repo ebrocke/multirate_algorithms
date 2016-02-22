@@ -20,7 +20,7 @@ yTypical = importdata('yTypicalSolution.txt',';'); % Typical solution
 % memory allocation constants
 % we enlarge by k1 if full
 % not efficient for multirate
-k1 = 50000;
+k1 = 500000;
 baseTol=1e-4;
 mem_size=k1*2^(log10(relTol/baseTol));
 
@@ -74,6 +74,7 @@ P_CELL.sys.ode_hdl = @ode_cell;
 P_CELL.sys.t_exch = zeros(1,MODE);
 P_CELL.sys.y_exch = zeros(MODE,2);
 P_CELL.sys.h = 1e-5;
+P_CELL.sys.m = 1;
 
 PERS.ERK = P_ERK;
 PERS.CELL = P_CELL;
@@ -96,48 +97,76 @@ if multirate
 else
     ysize = length(yTypical);
 end
+h_ = 1e-5;
+H_ = 1e-5;
 
 while t_ < tEnd
     
-    
-    if(rem(PERS.ERK.stats.acceptedIter, 1000)==0) % for displaying progress
+    ii_ = PERS.ERK.stats.acceptedIter;
+    if(rem(ii_, 1000)==0) % for displaying progress
         
-         toc, t_
+         toc, t_, H_, h_
         
     end
+
+%     if (h_ < 5e-5)
+%         stop = 0 ;
+%         [H_ h_ step_rejected_]
+%     end
+
     
     % Calculate the solution
     [sol_,  PERS] = solve_sys(...
         [t_ t_ + H_], relTol, step_rejected_, PERS);
-    
+    %dbstop if warning
     % calculate the error
-    [eEst_, ~] = ee_skelboe2000(...
+    [eEst_, eI] = ee_skelboe2000(...
         [y_(1:ysize,:) sol_(1:ysize)], dt_, relTol, yTypical);
     
     % calculate the macro H_ and micro h_ time steps
-    [H_,  step_rejected_, P_ERK.controller] = ec_h211b(dt_, ...
-        max(PERS.CELL.controller.eEst, eEst_),...
-        P_ERK.controller);
-    
-    if (multirate)
-        [h_ P_CELL.controller] = ec_classical(H_,...
-            max(PERS.CELL.controller.eEst, eEst_),...
-            P_CELL.controller);
-        PERS.CELL.sys.h = h_;
-        %[H_ h_ step_rejected_]
+     % we do not change macro time step if micro time step was not fine
+     % enough
+%     if any(isnan(sol_(erkSize+1:end)))
+%         H_ = dt_(end);
+%         step_rejected_ = true;
+%     else
+%    [H_,  step_rejected_, P_ERK.controller] = ec_h211b(dt_, ...
+%        max(PERS.CELL.controller.eEst, eEst_),...
+%        P_ERK.controller);
+%    end
+   % k =  1/(H_/PERS.CELL.controller.eEst)^2;
+    %[eEst_ eEst_*k]
+    if ~isnan(eEst_)
+        eEst_ = max(eEst_,PERS.CELL.controller.eEst);
     end
-    
+    [H_,  step_rejected_, P_ERK.controller] = ec_h211b(dt_, ...
+        eEst_,...
+        P_ERK.controller);
 
-    if (step_rejected_)
-        dt_(end) = H_;
-    else
+    
+%     if (multirate) %ec_h211b_hmicro
+%         [h_ P_CELL.controller] = ec_classical(H_,...
+%             max(PERS.CELL.controller.eEst, eEst_),...
+%             P_CELL.controller);
+%         PERS.CELL.sys.h = h_; % suggested micro time step
+%         PERS.CELL.sys.m = P_CELL.controller.m; % suggensted n of intervals
+% 
+%     %    [H_ h_ step_rejected_]
+%     end
+%        [H_ h_ step_rejected_ P_CELL.controller] = ec_classical_comb(...
+%            dt_(end),...
+%             max(PERS.CELL.controller.eEst, eEst_),...
+%             P_CELL.controller);
+%         PERS.CELL.sys.h = h_;
+%         PERS.CELL.sys.m = P_CELL.controller.m;
+
+    if (~step_rejected_)
         t_ = t_ + dt_(end);
         dt_=circshift(dt_,[0,-1]);
         y_=circshift(y_,[0,-1]);
-        dt_(end) = H_;
         y_(:,end) = sol_;
     end
-    
+    dt_(end) = H_;
     % Ensure that we dont leave the interval
     if t_ + H_ > tEnd  
         H_ = tEnd-t_;
