@@ -75,6 +75,7 @@ P_CELL.sys.t_exch = zeros(1,MODE);
 P_CELL.sys.y_exch = zeros(MODE,2);
 P_CELL.sys.h = 1e-5;
 P_CELL.sys.m = 1;
+P_CELL.sys.eEst  = 0;
 
 PERS.ERK = P_ERK;
 PERS.CELL = P_CELL;
@@ -122,7 +123,7 @@ while t_ < tEnd
     % calculate the error
     [eEst_, eI] = ee_skelboe2000(...
         [y_(1:ysize,:) sol_(1:ysize)], dt_, relTol, yTypical);
-    
+    PERS.CELL.sys.eEst = eEst_;
     % calculate the macro H_ and micro h_ time steps
      % we do not change macro time step if micro time step was not fine
      % enough

@@ -1,4 +1,4 @@
-function [SOL, SYS_PERS]=solve_adaptive_step(t, ...
+function [SOL, SYS_PERS]=solve_adaptive_step_unsynch(t, ...
     vars, ...
     relTol, ...
     step_rejected,...
@@ -22,11 +22,10 @@ sysIndex_ = SYS_PERS.stats.acceptedIter+1;
 % solution vector
 y_ = SYS_PERS.sol.y(:,1:sysIndex_);
 dt_ = SYS_PERS.sol.dt(1:sysIndex_);
+
 % optimal time step has been calculated by
 % the local controller during the last micro time step
 dt_(end) = SYS_PERS.controller.h;
-
-tEnd = t(2);
 
 refined_iter_ = 0;
 solver = SYS_PERS.sys.method_hdl;
@@ -56,7 +55,6 @@ if( sysIndex_ == 1)
     S_PERS_.new_jac_ = S_PERS_.New_Jac;
     S_PERS_.j_ = [];
     S_PERS_.j_= S_PERS_.J;
-    
 end
 
 
@@ -65,17 +63,8 @@ ii_ = length(C_PERS_.t);
 
 % find index closest to the end time
 %(on the left from the end)
-while tEnd < C_PERS_.t(ii_)
+while t(2) < C_PERS_.t(ii_)
     ii_ = ii_ -1;
-end
-
-% we merge intervals if the step size less than 1e-7
-% a good check if something wrong in the integration
-% since the step size should not go below 1e-7
-merge = 0;
-if (abs(tEnd - C_PERS_.t(ii_)) < 1e-7)
-    ii_ = ii_ -1;
-    merge  = 1;
 end
 
 % number of rejected micro timesteps
@@ -86,14 +75,9 @@ sysIndex_ =  sysIndex_ - rejected_iter_;
 % current time
 t_ = C_PERS_.t(ii_);
 
-%remove rejected solutions
+% remove rejected solutions
 dt_ = dt_(1:end-rejected_iter_);
 y_ = y_(:,1:end-rejected_iter_);
-
-% adjust optimal time step
-if (merge)
-    dt_(end) = (tEnd - t_);
-end
 
 % find index closest to the start time
 %(on the left from the start)
@@ -102,9 +86,7 @@ while t(1) < C_PERS_.t(jj_)
     jj_ = jj_ -1;
 end
 
-% we save the history only for the current macro time step
-% if the last step rejected shrink the history
-% otherwise empty it
+% we save the history only for the current integrtion interval
 C_PERS_.eEstVec = C_PERS_.eEstVec_(ii_,:);
 C_PERS_.rhofac = C_PERS_.rhofac_(ii_);
 
@@ -112,7 +94,6 @@ C_PERS_.t = C_PERS_.t(jj_:ii_);
 C_PERS_.eEst_ = C_PERS_.eEst_(jj_:ii_);
 C_PERS_.eEstVec_ = C_PERS_.eEstVec_(jj_:ii_,:);
 C_PERS_.rhofac_ = C_PERS_.rhofac_(jj_:ii_);
-
 
 S_PERS_.Fac = S_PERS_.fac_(:,ii_);
 S_PERS_.Delta_old = S_PERS_.delta_old_(:,:,ii_);
@@ -131,13 +112,9 @@ stat=zeros(1,3);
 rejected_ = false;
 h_ = dt_(end);
 
-while t_ < tEnd
+while t_ < t(2)
     
-    % Ensure that we dont leave the interval
-    if (t_ + dt_(end) > tEnd)
-        dt_(end) = tEnd-t_;
-    end
-    
+    % extrapolation of slow variables
     varsTilde = approximate(t_vars, y_vars,  -(t_-t(1)+h_));
     
     % Calculate the solution
@@ -152,6 +129,7 @@ while t_ < tEnd
     [eEst, ~] = ee_skelboe2000(...
         [y_ SOL], dt_, relTol,  SYS_PERS.solver.yTypical);
     
+    %err = max(eEst, SYS_PERS.sys.eEst);
     % Update time and timestep
     [h_,  rejected_, C_PERS_] = ec_h211b(...
         dt_, eEst, C_PERS_ );
@@ -176,8 +154,17 @@ while t_ < tEnd
         dt_(end+1) = h_;
         y_(:,end+1) = SOL;
         sysIndex_ = sysIndex_ + 1;
+        ii_ = ii_+1;
     end
     
+end
+if (t_ > t(2))
+    delta_ = C_PERS_.t(end)-t(2);
+    ts = [0 dt_(end-1) dt_(end-1)+dt_(end-2)];
+    ys = fliplr(y_(:,end-2:end));
+    SOL = approximate(ts,ys',delta_);
+    SOL = SOL';
+    %varsTilde = approximate(t_vars, y_vars,  -(t(2)-t(1)));
 end
 
 % save the last calculated values for GS organization
@@ -188,6 +175,7 @@ SYS_PERS.sol.dt(1:sysIndex_-1) = dt_(1:end-1);
 % save controller workspace
 SYS_PERS.controller = C_PERS_;
 SYS_PERS.controller.h = h_;
+
 SYS_PERS.controller.eEst = max(C_PERS_.eEst_);
 % save solver workspace
 SYS_PERS.solver = S_PERS_;

@@ -22,7 +22,7 @@ solvErkNM   = @BDF2_DEF;%@BDF2_DEF;%@BDF2_AS;%@RK4;
 isolvErk = @solve_one_step;
 % Cell system
 solvCellNM   = @BDF2_DEF;%@BDF2_DEF;%@BDF2_DEF;%@BDF2_AS;%@CrankNicStagg; 
-isolvCell = @solve_adaptive_step;
+isolvCell = @solve_adaptive_step_unsynch;
 
 odeslv = @solver_adaptive;
 %odeslv = @ode_solver_fixed;%@ode_solver_h211b; %ode_solver_fixed

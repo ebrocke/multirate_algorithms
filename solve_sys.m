@@ -69,7 +69,6 @@ elseif(strcmp(iterMethod,'GSwCellfirst'))
     % then we need to recalculate the whole step 
     % in case the step is rejected
     % Thus we use extrapolation for each micro time step
-    % in order to reduce the number of idle recalcutations
     
 %     [Y2, SYSTEM.CELL] = isolver_cell(t, ...
 %         {[-H t_erk], [erkTilde; y_erk]}, ....
@@ -83,9 +82,9 @@ elseif(strcmp(iterMethod,'GSwCellfirst'))
     if any(isnan(Y2))
         cell_vars = [NaN NaN];
     else
-        %erkTilde = approximate(t_erk, y_erk, -H);
-        [caFlux] = feval(SYSTEM.CELL.sys.exch_hdl, ...
-            Y2, SYSTEM.CELL.sys.varsTilde(2)*1e-3);
+        erkTilde = approximate(t_erk, y_erk, -H);
+        [caFlux] = feval(SYSTEM.CELL.sys.exch_hdl,...
+            Y2, erkTilde(2)*1e-3);
         cell_vars = [0 caFlux];
     end
     
