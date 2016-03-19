@@ -2,7 +2,7 @@ function [ERR, ERR_INDEX] = ee_skelboe2000(Y, DT, RELTOL, YTYPICAL)
 global MODE
 sol_ = Y (:,end); % the last element is the solution to evaluate
 if any(isnan(sol_))
-    ERR = NaN;%ERR = 3.6;
+    ERR = Inf;%ERR = 3.6;
     ERR_INDEX = -1;
     return;
 end

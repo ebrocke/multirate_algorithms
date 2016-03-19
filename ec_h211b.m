@@ -16,7 +16,7 @@ STEP_REJECTED = false;
 %deuflhard = false;
 
 q = 2;
-if isnan(E_EST)
+if isinf(E_EST)
     H = DT(end)/2;
     STEP_REJECTED = true;
     return

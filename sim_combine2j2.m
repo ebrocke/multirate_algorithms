@@ -12,26 +12,26 @@ CONST = load('modelconst.mat');
 
 %%%% Initiate solvers
 organization = ...              % Organization for solve decoupled systems
-    {'Jac','GSwErkfirst','GSwCellfirst'};
-iterMethod = organization{3};
+    {'Jac','GSSlowFirst','GSFastFirst'};
+iterMethod = organization{1};
 
 %%%% Chosing solver parameters
-multirate = true;
+multirate = false;
 % Erk system
 solvErkNM   = @BDF2_DEF;%@BDF2_DEF;%@BDF2_AS;%@RK4; 
-isolvErk = @solve_one_step;
+%isolvErk = @solve_adaptive_step;
 % Cell system
 solvCellNM   = @BDF2_DEF;%@BDF2_DEF;%@BDF2_DEF;%@BDF2_AS;%@CrankNicStagg; 
-isolvCell = @solve_adaptive_step_unsynch;
+%isolvCell = @solve_adaptive_step;
 
 odeslv = @solver_adaptive;
 %odeslv = @ode_solver_fixed;%@ode_solver_h211b; %ode_solver_fixed
-slv_param = 1e-4;   % Relative tolerance for adaptive [ @ode_solver_h211b (1e-3)]
+slv_param = 1e-5;   % Relative tolerance for adaptive [ @ode_solver_h211b (1e-3)]
                     % or number of steps for fixed [ @ode_solver_fixed (1e5)]
 %slv_param = 2e5; 
                     
 %%%% Chosing model parameters
-T_SIM = 1.5;         % Total run time [s]
+T_SIM = 2;         % Total run time [s]
 
 %%%% Set up the parametrs
 setup_cell_parameters();
@@ -53,8 +53,8 @@ tic;
 [t1, y_erk, t2, y_cell, stats_erk, stats_cell] = odeslv([0 T_SIM], ...
     [erk_init_vals cell_init_vals], slv_param, ...
     erk_size, ...
-    {solvErkNM erk_exch isolvErk}, ...
-    {solvCellNM cell_exch isolvCell},...
+    {solvErkNM erk_exch}, ...
+    {solvCellNM cell_exch},...
     multirate);
 runTime = toc
 
