@@ -49,10 +49,11 @@ if (S_PERS_.step_rejected)
    S_PERS_.step_rejected = false; % we restore the values outside
    SYS_PERS.stats.refinedIter = SYS_PERS.stats.refinedIter + 1;
    SOL = NaN(size(SYS_PERS.solver.yTypical));
+   %SYS_PERS.sol.dt(sysIndex_) = h_;
 else
    SYS_PERS.stats.acceptedIter = SYS_PERS.stats.acceptedIter + 1;
-   SYS_PERS.sol.y(:, sysIndex_+1) = SOL; % save the solution
-   SYS_PERS.sol.dt(sysIndex_) = dt_(end); 
+   SYS_PERS.sol.y(:, sysIndex_+1) = SOL; % save the solution 
+   SYS_PERS.sol.dt(sysIndex_) = dt_(end);
    
    % update controller history
    C_PERS_.t(end+1) = t_+dt_(end);
@@ -65,6 +66,7 @@ else
    S_PERS_.new_jac_(end+1) = S_PERS_.New_Jac;
    S_PERS_.j_(:,:,end+1) = S_PERS_.J;
 end
+
 SYS_PERS.controller = C_PERS_;
 SYS_PERS.solver = S_PERS_;
 SYS_PERS.controller.h = h_;

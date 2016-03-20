@@ -18,7 +18,9 @@ dt_ = SYSTEM.sol.dt(1:sysIndex_);
 dt_(end) = SYSTEM.controller.h;
 
 ii_ = length(C_PERS_.t);
-
+if (ii_ > 2)
+    stop = 0;
+end
 % find index closest to the end time
 %(on the left from the end)
 while tEnd < C_PERS_.t(ii_)

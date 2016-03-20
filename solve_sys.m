@@ -39,22 +39,24 @@ if(strcmp(iterMethod,'Jac'))
             [toc, t_, SYSTEM.CELL.controller.h SYSTEM.ERK.controller.h ]
         end    
          
-        H_ = SYSTEM.CELL.controller.h;
-        t_ = SYSTEM.CELL.controller.t(end);
-        SYSTEM.ERK.controller.h = SYSTEM.CELL.controller.h;
-        
+        H_ = SYSTEM.ERK.controller.h;
+        t_ = SYSTEM.ERK.controller.t(end);
+        SYSTEM.CELL.controller.h = SYSTEM.ERK.controller.h;
+        SYSTEM.CELL.controller.eEst  = 0;
+        erkTilde = approximate(t_erk, y_erk, -H_);
+        [Y2, SYSTEM.CELL] = isolver_cell([t_ t_+H_], ...
+            {[-H_ t_erk], [erkTilde; y_erk]}, ...
+            relTol,...
+            SYSTEM.CELL); 
+        SYSTEM.ERK.controller.eEst = SYSTEM.CELL.controller.eEst;
         cellTilde = approximate(t_cell, y_cell, -H_ );
         [Y1, SYSTEM.ERK] = isolver_erk([t_ t_+H_],...
             {[-H_ t_cell], [cellTilde; y_cell]},...
             relTol,...
             SYSTEM.ERK);
-        
-        SYSTEM.CELL.controller.eEst = SYSTEM.ERK.controller.eEst;
-        erkTilde = approximate(t_erk, y_erk, -H_);
-        [Y2, SYSTEM.CELL] = isolver_cell([t_ t_+H_], ...
-            {[-H_ t_erk], [erkTilde; y_erk]}, ...
-            relTol,...
-            SYSTEM.CELL);      
+        if (any(isnan(Y1)) && ~any(isnan(Y2)))
+            display('erk was rejected')
+        end
         
         out = [Y1; Y2];
         if (any(isnan(out)))
