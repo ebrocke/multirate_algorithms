@@ -55,7 +55,7 @@ if(strcmp(iterMethod,'Jac'))
             relTol,...
             SYSTEM.ERK);
         if (any(isnan(Y1)) && ~any(isnan(Y2)))
-            display('erk was rejected')
+            SYSTEM.CELL = update([t_ t_],SYSTEM.CELL);
         end
         
         out = [Y1; Y2];
