@@ -44,7 +44,7 @@ P_ERK.solver.j_= zeros(ss,ss);
 % controller working variables
 P_ERK.controller.eEst = 0;
 P_ERK.controller.init = 0;
-P_ERK.controller.h = 1e-5;
+%P_ERK.controller.h = 1e-5;
 P_ERK.controller.t = t(1);
 P_ERK.controller.eEst_ = 0;
 P_ERK.controller.eEstVec_ =  [NaN NaN NaN]; 
@@ -60,6 +60,7 @@ P_ERK.sys.ode_hdl = @ode_erk; % handle to the system ode functions
 % store system solution
 P_ERK.sol.y = zeros(erkSize,mem_size);
 P_ERK.sol.dt = zeros(1,mem_size);
+P_ERK.sol.dt(1) = 1e-5;
 P_ERK.sol.y(:,1) = initVals(1:erkSize)';
 
 
@@ -80,10 +81,11 @@ P_CELL.stats.n_ode_numjac = 0;
 P_CELL.stats.n_ode_iter = 0;
 P_CELL.sol.y = zeros(length(initVals)-erkSize,mem_size);
 P_CELL.sol.dt = zeros(1,mem_size);
+P_CELL.sol.dt(1) = 1e-5;
 P_CELL.sol.y(:,1) = initVals(erkSize+1:end)';
 P_CELL.controller.init = 0;
 P_CELL.controller.eEst = 0;
-P_CELL.controller.h = 1e-5;
+%P_CELL.controller.h = 1e-5;
 P_CELL.controller.t = t(1);
 P_CELL.controller.eEst_ = 0;
 P_CELL.controller.eEstVec_ = [NaN NaN NaN]; 

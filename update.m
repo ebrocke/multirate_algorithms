@@ -15,12 +15,12 @@ end
 % solution vector
 y_ = SYSTEM.sol.y(:,1:sysIndex_);
 dt_ = SYSTEM.sol.dt(1:sysIndex_);
-dt_(end) = SYSTEM.controller.h;
+%dt_(end) = SYSTEM.controller.h;
 
 ii_ = length(C_PERS_.t);
-if (ii_ > 2)
-    stop = 0;
-end
+% if (ii_ > 2)
+%     stop = 0;
+% end
 % find index closest to the end time
 %(on the left from the end)
 while tEnd < C_PERS_.t(ii_)
@@ -83,10 +83,10 @@ S_PERS_.j_= S_PERS_.j_(:,:,jj_:ii_);
 
 % save solution
 SYSTEM.sol.y(:,1:sysIndex_) = y_;
-SYSTEM.sol.dt(1:sysIndex_-1) = dt_(1:end-1);
+SYSTEM.sol.dt(1:sysIndex_) = dt_(1:end);
 % save controller workspace
 SYSTEM.controller = C_PERS_;
-SYSTEM.controller.h = dt_(end);
+%SYSTEM.controller.h = dt_(end);
 % save solver workspace
 SYSTEM.solver = S_PERS_;
 % update statistics

@@ -10,7 +10,8 @@ if (any(isnan(y_vars)))
     SOL = NaN(size(SYS_PERS.sol.y,1),1);
     return;
 end
-
+% aligns solutions according to interval t
+% updates the history
 SYS_PERS = update(t, SYS_PERS);
 
 % controller workspace
@@ -25,17 +26,16 @@ y_ = SYS_PERS.sol.y(:,1:sysIndex_);
 dt_ = SYS_PERS.sol.dt(1:sysIndex_);
 % optimal time step has been calculated by
 % the local controller during the last micro time step
-dt_(end) = SYS_PERS.controller.h;
+%dt_(end) = SYS_PERS.controller.h;
 
 tEnd = t(2);
-
 refined_iter_ = 0;
 solver = SYS_PERS.sys.method_hdl;
 
-% init
 stat_=zeros(1,3);
 stat=zeros(1,3);
 
+% last value is an optimal time step
 h_ = dt_(end);
 % current time
 t_ = C_PERS_.t(end);
@@ -104,10 +104,10 @@ end
 %SYS_PERS.sys.varsTilde = varsTilde;
 % save solution
 SYS_PERS.sol.y(:,1:sysIndex_) = y_;
-SYS_PERS.sol.dt(1:sysIndex_-1) = dt_(1:end-1);
+SYS_PERS.sol.dt(1:sysIndex_) = dt_(1:end);
 % save controller workspace
 SYS_PERS.controller = C_PERS_;
-SYS_PERS.controller.h = h_;
+%SYS_PERS.controller.h = h_;
 SYS_PERS.controller.eEst = max(C_PERS_.eEst_);
 % save solver workspace
 SYS_PERS.solver = S_PERS_;

@@ -9,6 +9,7 @@ if (any(isnan(varsTilde)))
     SOL = NaN(size(SYS_PERS.sol.y,1),1);
     return;
 end
+% aligns solution according to interval t
 SYS_PERS = update(t, SYS_PERS);
 % controller workspace
 C_PERS_ = SYS_PERS.controller;
@@ -25,7 +26,7 @@ dt_ = SYS_PERS.sol.dt(1:sysIndex_);
 
 % optimal time step has been calculated by
 % the local controller during the last micro time step
-dt_(end) = SYS_PERS.controller.h;
+%dt_(end) = SYS_PERS.controller.h;
 
 solver = SYS_PERS.sys.method_hdl;
 t_ = C_PERS_.t(end);
@@ -49,11 +50,12 @@ if (S_PERS_.step_rejected)
    S_PERS_.step_rejected = false; % we restore the values outside
    SYS_PERS.stats.refinedIter = SYS_PERS.stats.refinedIter + 1;
    SOL = NaN(size(SYS_PERS.solver.yTypical));
-   %SYS_PERS.sol.dt(sysIndex_) = h_;
+   SYS_PERS.sol.dt(sysIndex_) = h_;
 else
    SYS_PERS.stats.acceptedIter = SYS_PERS.stats.acceptedIter + 1;
    SYS_PERS.sol.y(:, sysIndex_+1) = SOL; % save the solution 
-   SYS_PERS.sol.dt(sysIndex_) = dt_(end);
+   SYS_PERS.sol.dt(sysIndex_+1) = h_;
+   %SYS_PERS.sol.dt(sysIndex_) = dt_(end);
    
    % update controller history
    C_PERS_.t(end+1) = t_+dt_(end);
@@ -69,7 +71,7 @@ end
 
 SYS_PERS.controller = C_PERS_;
 SYS_PERS.solver = S_PERS_;
-SYS_PERS.controller.h = h_;
+%SYS_PERS.controller.h = h_;
 SYS_PERS.controller.eEst = eEst;
 % update statistics
 SYS_PERS.stats.numjac = SYS_PERS.stats.numjac + stat(1);

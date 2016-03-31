@@ -21,14 +21,13 @@ global iterMethod
     end
 
 
-
+% single rate integration
 if(strcmp(iterMethod,'Jac'))
     isolver_cell = @solve_one_step;
     isolver_erk = @solve_one_step;
     t_ = t(1);
     ii_ = 0;
     % H_ is a macro time step
-
     while t_ < t(2)
         [y_erk t_erk SYSTEM.ERK] = get_exchanged_vector(...
             @get_erk_exchaged_vector, step_rejected, SYSTEM.ERK);
@@ -36,24 +35,31 @@ if(strcmp(iterMethod,'Jac'))
             @get_cell_exchaged_vector, step_rejected, SYSTEM.CELL);
         
         if(rem(ii_, 1000)==0) % for displaying progress
-            [toc, t_, SYSTEM.CELL.controller.h SYSTEM.ERK.controller.h ]
+            [toc, t_, get_h_optimal(SYSTEM.ERK) ]
         end    
-         
-        H_ = SYSTEM.ERK.controller.h;
+        
+        % ERK component calculates H_=h_
+        H_ = get_h_optimal(SYSTEM.ERK);
         t_ = SYSTEM.ERK.controller.t(end);
-        SYSTEM.CELL.controller.h = SYSTEM.ERK.controller.h;
+        
+        
+        SYSTEM.CELL = set_h_optimal(H_,SYSTEM.CELL);
         SYSTEM.CELL.controller.eEst  = 0;
+        
         erkTilde = approximate(t_erk, y_erk, -H_);
         [Y2, SYSTEM.CELL] = isolver_cell([t_ t_+H_], ...
             {[-H_ t_erk], [erkTilde; y_erk]}, ...
             relTol,...
-            SYSTEM.CELL); 
+            SYSTEM.CELL);
+       
+        
         SYSTEM.ERK.controller.eEst = SYSTEM.CELL.controller.eEst;
         cellTilde = approximate(t_cell, y_cell, -H_ );
         [Y1, SYSTEM.ERK] = isolver_erk([t_ t_+H_],...
             {[-H_ t_cell], [cellTilde; y_cell]},...
             relTol,...
             SYSTEM.ERK);
+        
         if (any(isnan(Y1)) && ~any(isnan(Y2)))
             SYSTEM.CELL = update([t_ t_],SYSTEM.CELL);
         end
@@ -113,18 +119,21 @@ elseif(strcmp(iterMethod,'GSFastFirst'))
         [y_cell t_cell SYSTEM.CELL] = get_exchanged_vector( ...
             @get_cell_exchaged_vector, step_rejected, SYSTEM.CELL);
        
-        if(rem(ii_, 1000)==0) % for displaying progress
-            [toc, t_, SYSTEM.CELL.controller.h SYSTEM.ERK.controller.h ]
-        end
-       
+         
+        h_cell = get_h_optimal(SYSTEM.CELL); 
+        h_erk = get_h_optimal(SYSTEM.ERK); 
         
-        if (SYSTEM.CELL.controller.h <= SYSTEM.ERK.controller.h)
+        if(rem(ii_, 1000)==0) % for displaying progress
+            [toc, t_, h_cell, h_erk ]
+        end
+        % the component with the smallest h_ is solved first over H_
+        if (h_cell <= h_erk)
             
-            % full rollback
+            % full rollback if component order has been changed
             if (erkfirst && step_rejected)
                 SYSTEM.ERK = update([t_ t_], SYSTEM.ERK);
             end
-            H_ = SYSTEM.ERK.controller.h;
+            H_ = h_erk;
             t_ = SYSTEM.ERK.controller.t(end);
             SYSTEM.CELL.sys.isolver_hdl = @solve_adaptive_step;
             SYSTEM.ERK.sys.isolver_hdl = @solve_one_step;
@@ -135,11 +144,11 @@ elseif(strcmp(iterMethod,'GSFastFirst'))
             cellfirst = 1;
             erkfirst = 0;
         else
-            % full rollback
+            % full rollback if component order has been changed
             if (cellfirst && step_rejected)
                 SYSTEM.CELL = update([t_ t_], SYSTEM.CELL);
             end
-            H_ = SYSTEM.CELL.controller.h;
+            H_ = h_cell;
             t_ = SYSTEM.CELL.controller.t(end);
             SYSTEM.ERK.sys.isolver_hdl = @solve_adaptive_step;
             SYSTEM.CELL.sys.isolver_hdl = @solve_one_step;
@@ -190,7 +199,7 @@ else
 end
 SYSTEM.CELL.controller.eEst = SYSTEM.ERK.controller.eEst;
 [Y2, SYSTEM.CELL] = isolver_cell(t,...
-    {[-SYSTEM.CELL.controller.h t_erk], [erk_vars; y_erk]}, ...
+    {[-(t(2)-t(1)) t_erk], [erk_vars; y_erk]}, ...
     relTol,...
     SYSTEM.CELL);
 out = [Y1; Y2];
@@ -222,7 +231,7 @@ isolver_erk = SYSTEM.ERK.sys.isolver_hdl;
 if any(isnan(Y2))
     cell_vars = [NaN NaN];
 else
-    erkTilde = approximate(t_erk, y_erk, -SYSTEM.ERK.controller.h);
+    erkTilde = approximate(t_erk, y_erk, -(t(2)-t(1)));
     [caFlux] = feval(SYSTEM.CELL.sys.exch_hdl,...
         Y2, erkTilde(2)*1e-3);
     cell_vars = [0 caFlux];
