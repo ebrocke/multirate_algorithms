@@ -34,14 +34,15 @@ if(strcmp(iterMethod,'Jac'))
         [y_cell t_cell SYSTEM.CELL] = get_exchanged_vector( ...
             @get_cell_exchaged_vector, step_rejected, SYSTEM.CELL);
         
-        if(rem(ii_, 1000)==0) % for displaying progress
-            [toc, t_, get_h_optimal(SYSTEM.ERK) ]
-        end    
+   
         
         % ERK component calculates H_=h_
         H_ = get_h_optimal(SYSTEM.ERK);
         t_ = SYSTEM.ERK.controller.t(end);
         
+        if(rem(ii_, 1000)==0) % for displaying progress
+            [toc, t_, H_ ]
+        end   
         
         SYSTEM.CELL = set_h_optimal(H_,SYSTEM.CELL);
         SYSTEM.CELL.controller.eEst  = 0;
@@ -73,17 +74,89 @@ if(strcmp(iterMethod,'Jac'))
         
         ii_ = ii_ +1;
     end
-
+elseif(strcmp(iterMethod,'GSHHFirst'))
+    t_ = t(1);
+    ii_ = 0;
+    % H_ is a macro time step
+    SYSTEM.CELL.sys.isolver_hdl = @solve_one_step;
+    SYSTEM.ERK.sys.isolver_hdl = @solve_one_step;
+    while t_ < t(2)
+        
+        [y_erk t_erk SYSTEM.ERK] = get_exchanged_vector(...
+            @get_erk_exchaged_vector, step_rejected, SYSTEM.ERK);
+        [y_cell t_cell SYSTEM.CELL] = get_exchanged_vector( ...
+            @get_cell_exchaged_vector, step_rejected, SYSTEM.CELL);
+        
+        % ERK component calculates H_=h_
+        H_ = get_h_optimal(SYSTEM.ERK);
+        t_ = SYSTEM.ERK.controller.t(end);
+        
+        SYSTEM.CELL = set_h_optimal(H_,SYSTEM.CELL);
+        SYSTEM.CELL.controller.eEst  = 0;
+        
+        if(rem(ii_, 1000)==0) % for displaying progress
+            [toc, t_, H_ ]
+        end
+        
+        [out SYSTEM] = CellFirst([t_ t_+H_],...
+            {t_erk, y_erk, t_cell, y_cell},...
+            relTol, SYSTEM);
+        
+        if (any(isnan(out)))
+            step_rejected = true;
+        else
+            step_rejected = false;
+        end
+        
+        ii_ = ii_ +1;
+       
+    end
+elseif(strcmp(iterMethod,'GSERKFirst'))
+    t_ = t(1);
+    ii_ = 0;
+    % H_ is a macro time step
+    SYSTEM.CELL.sys.isolver_hdl = @solve_one_step;
+    SYSTEM.ERK.sys.isolver_hdl = @solve_one_step;
+    while t_ < t(2)
+        
+        [y_erk t_erk SYSTEM.ERK] = get_exchanged_vector(...
+            @get_erk_exchaged_vector, step_rejected, SYSTEM.ERK);
+        [y_cell t_cell SYSTEM.CELL] = get_exchanged_vector( ...
+            @get_cell_exchaged_vector, step_rejected, SYSTEM.CELL);
+        
+        % ERK component calculates H_=h_
+        H_ = get_h_optimal(SYSTEM.CELL);
+        t_ = SYSTEM.CELL.controller.t(end);
+        
+        SYSTEM.ERK = set_h_optimal(H_,SYSTEM.ERK);
+        SYSTEM.ERK.controller.eEst  = 0;
+        
+        if(rem(ii_, 1000)==0) % for displaying progress
+            [toc, t_, H_ ]
+        end
+        
+        [out SYSTEM] = ERKFirst([t_ t_+H_],...
+            {t_erk, y_erk, t_cell, y_cell},...
+            relTol, SYSTEM);
+        
+        if (any(isnan(out)))
+            step_rejected = true;
+        else
+            step_rejected = false;
+        end
+        
+        ii_ = ii_ +1;
+        
+    end
 % slowest component integrated first
 % (predicted time step is the largest)
 elseif(strcmp(iterMethod,'GSSlowFirst'))
     t_ = t(1);
+    ii_ = 0;
+    % H_ is a macro time step
+    %cellfirst=1;
+    %erkfirst=0;
     while t_ < t(2)
-        ii_ = max(SYSTEM.ERK.stats.acceptedIter, ...
-            SYSTEM.CELL.stats.acceptedIter);
-        if(rem(ii_, 1000)==0) % for displaying progress
-            [toc, t_, SYSTEM.CELL.controller.h SYSTEM.ERK.controller.h ]
-        end
         
         % retrieve last 3 values of the exchanged variables
         [y_erk t_erk SYSTEM.ERK] = get_exchanged_vector(...
@@ -91,18 +164,41 @@ elseif(strcmp(iterMethod,'GSSlowFirst'))
         [y_cell t_cell SYSTEM.CELL] = get_exchanged_vector( ...
             @get_cell_exchaged_vector, step_rejected, SYSTEM.CELL);
         
-        if (SYSTEM.CELL.controller.h > SYSTEM.ERK.controller.h)
-            H_ = SYSTEM.ERK.controller.h;
+        h_cell = get_h_optimal(SYSTEM.CELL); 
+        h_erk = get_h_optimal(SYSTEM.ERK);
+        
+        if(rem(ii_, 1000)==0) % for displaying progress
+            [toc, t_, h_cell h_erk ]
+        end
+        
+        if (h_cell > h_erk)
+            H_ = h_cell;
+            t_ = SYSTEM.CELL.controller.t(end);
+            SYSTEM.CELL.sys.isolver_hdl = @solve_one_step;
+            SYSTEM.ERK.sys.isolver_hdl = @solve_adaptive_step;
+      
             [out SYSTEM] = CellFirst([t_ t_+H_],...
                 {t_erk, y_erk, t_cell, y_cell},...
                 relTol, step_rejected, SYSTEM);
         else
-            H_ = SYSTEM.CELL.controller.h;
+            H_ = h_erk;
+            t_ = SYSTEM.ERK.controller.t(end);
+            SYSTEM.CELL.sys.isolver_hdl = @solve_adaptive_step;
+            SYSTEM.ERK.sys.isolver_hdl = @solve_one_step;
+           
             [out SYSTEM] = ERKFirst([t_ t_+H_],...
                 {t_erk, y_erk, t_cell, y_cell},...
                 relTol, step_rejected, SYSTEM);
         end
-        t_ = t_ + H_;
+        
+        if (any(isnan(out)))
+            step_rejected = true;
+        else
+            step_rejected = false;
+        end
+        
+        ii_ = ii_ +1;
+       
     end
     % fastest component integrated first
     % (predicted time step is the smallest)
@@ -230,12 +326,14 @@ isolver_erk = SYSTEM.ERK.sys.isolver_hdl;
 
 if any(isnan(Y2))
     cell_vars = [NaN NaN];
+    %display('CellFirst:: varsTilde is NaN')
 else
     erkTilde = approximate(t_erk, y_erk, -(t(2)-t(1)));
     [caFlux] = feval(SYSTEM.CELL.sys.exch_hdl,...
         Y2, erkTilde(2)*1e-3);
     cell_vars = [0 caFlux];
 end
+    
 SYSTEM.ERK.controller.eEst = SYSTEM.CELL.controller.eEst;
 [Y1, SYSTEM.ERK] = isolver_erk( t, ...
     { [], cell_vars},...

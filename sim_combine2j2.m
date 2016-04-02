@@ -12,8 +12,8 @@ CONST = load('modelconst.mat');
 
 %%%% Initiate solvers
 organization = ...              % Organization for solve decoupled systems
-    {'Jac','GSSlowFirst','GSFastFirst'};
-iterMethod = organization{1};
+    {'Jac','GSHHFirst','GSERKFirst','GSSlowFirst','GSFastFirst'};
+iterMethod = organization{3};
 
 %%%% Chosing solver parameters
 multirate = false;

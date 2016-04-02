@@ -5,9 +5,12 @@ function [SOL, SYS_PERS]=solve_one_step(t, ...
 
 % return NaN if previous solver failed
 varsTilde = vars{2};
+solve = true;
 if (any(isnan(varsTilde)))
+    %display('solver_one_step:: varsTilde is NaN')
     SOL = NaN(size(SYS_PERS.sol.y,1),1);
-    return;
+    solve = false;
+   % return;
 end
 % aligns solution according to interval t
 SYS_PERS = update(t, SYS_PERS);
@@ -32,10 +35,12 @@ solver = SYS_PERS.sys.method_hdl;
 t_ = C_PERS_.t(end);
 h_ = dt_(end);
 
-[SOL, stat(1), stat(2), stat(3), S_PERS_] = solver([t_ t_+h_],...
-    y_, dt_, ...
-    SYS_PERS.sys.ode_hdl,...
-    varsTilde(1,:), relTol, S_PERS_);
+if solve
+    [SOL, stat(1), stat(2), stat(3), S_PERS_] = solver([t_ t_+h_],...
+        y_, dt_, ...
+        SYS_PERS.sys.ode_hdl,...
+        varsTilde(1,:), relTol, S_PERS_);
+end
 
 % calculate the error
 [eEst, ~] = ee_skelboe2000(...
