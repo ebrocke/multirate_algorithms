@@ -1,12 +1,13 @@
 function [ERR, ERR_INDEX] = ee_skelboe2000(Y, DT, RELTOL, YTYPICAL)
-global MODE
+%global MODE
 sol_ = Y (:,end); % the last element is the solution to evaluate
 if any(isnan(sol_))
     ERR = Inf;%ERR = 3.6;
     ERR_INDEX = -1;
     return;
 end
-i_ = min(MODE,length(find(DT)));
+% we always use MODE3 for the error estimation
+i_ = min(3,length(find(DT)));
 if (i_ == 1) % we do not evaluate the first step
     ERR = 0;
     ERR_INDEX = -1;
