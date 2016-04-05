@@ -47,8 +47,8 @@ end
     [y_ SOL], dt_, relTol,  S_PERS_.yTypical);
 
 % Update time and timestep
-[h_,  S_PERS_.step_rejected, C_PERS_] = ec_h211b(...
-    dt_, max(eEst,C_PERS_.eEst), C_PERS_);
+[h_,  S_PERS_.step_rejected, C_PERS_] = C_PERS_.fn(...
+    dt_, eEst, C_PERS_);
 
 % update statistics
 if (S_PERS_.step_rejected)

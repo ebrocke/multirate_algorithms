@@ -10,7 +10,8 @@ dtMax = Inf;    % Maximum step size
 
 TOL = 1;        % Tolerance level for error
 
-
+eEstVec = PERSISTENT.eEstVec;  % Estimations of last errors
+rhofac = PERSISTENT.rhofac;  % Söderlind's limiter
 STEP_REJECTED = false;
 
 %deuflhard = false;
@@ -23,13 +24,9 @@ if isinf(E_EST)
 end
 
 if PERSISTENT.init > 0  % for later steps, find the error estimate
-    eEstVec = PERSISTENT.eEstVec; % Estimations of last errors
     
     if(PERSISTENT.init == 1)
         rhofac = DT(end)/DT(end-1);
-    else
-        rhofac = PERSISTENT.rhofac; % Söderlind's limiter
-
     end
     
     
@@ -143,12 +140,12 @@ if PERSISTENT.init > 0  % for later steps, find the error estimate
     
 else % For the first step, use Euler formula with no error estimation
     PERSISTENT.init = 1;
-    eEstVec = [NaN rho*TOL rho*TOL];
-    rhofac = 0;
+    %eEstVec = [NaN rho*TOL rho*TOL];
+    %rhofac = 0;
     H = 1e-5;
     
 end
-PERSISTENT.h = H;
+%PERSISTENT.h = H;
 PERSISTENT.eEstVec = eEstVec;
 PERSISTENT.rhofac = rhofac;
 

@@ -6,13 +6,13 @@ function [t_erk, y_erk, t_cell, y_cell, stats_erk, stats_cell]=...
     erkSys, cellSys,...
     multirate)
 
-global MODE 
+global MODE iterMethod
 
 
-tEnd = t(2);     % Ending time
-t_ = t(1);         % Current time
+%tEnd = t(2);     % Ending time
+%t_ = t(1);         % Current time
 
-step_rejected_ = false;
+%step_rejected = false;
 
 yTypical = importdata('yTypicalSolution.txt',';'); % Typical solution
 
@@ -49,6 +49,9 @@ P_ERK.controller.t = t(1);
 P_ERK.controller.eEst_ = 0;
 P_ERK.controller.eEstVec_ =  [NaN NaN NaN]; 
 P_ERK.controller.rhofac_ = 0;
+P_ERK.controller.eEstVec = [NaN 0.9 0.9];
+P_ERK.controller.rhofac = 0;
+
 % system working variables
 P_ERK.sys.t_exch = zeros(1,MODE); %store last exchanged values
 P_ERK.sys.y_exch = zeros(MODE,2); % in a reversed order of time
@@ -90,6 +93,8 @@ P_CELL.controller.t = t(1);
 P_CELL.controller.eEst_ = 0;
 P_CELL.controller.eEstVec_ = [NaN NaN NaN]; 
 P_CELL.controller.rhofac_ = 0;
+P_CELL.controller.eEstVec = [NaN 0.9 0.9];
+P_CELL.controller.rhofac = 0;
 
 P_CELL.sys.method_hdl = cellSys{1};
 P_CELL.sys.exch_hdl = cellSys{2};
@@ -101,135 +106,73 @@ P_CELL.sys.h = 1e-5;
 P_CELL.sys.m = 1;
 P_CELL.sys.eEst  = 0;
 
-PERS.ERK = P_ERK;
-PERS.CELL = P_CELL;
-PERS.yTypical = yTypical;
+SYSTEM.ERK = P_ERK;
+SYSTEM.CELL = P_CELL;
+SYSTEM.yTypical = yTypical;
 
-yTypical = abs(yTypical);
-H_ = 1e-5;
+%yTypical = abs(yTypical);
+%H_ = 1e-5;
 
 % We save last three system solutions
 % is the error estimation
-y_ = zeros(length(initVals),3);
-dt_ = zeros(1,3);
-y_(:,end) = initVals;
-dt_(end) = H_;
+%y_ = zeros(length(initVals),3);
+%dt_ = zeros(1,3);
+%y_(:,end) = initVals;
+%dt_(end) = H_;
 
 
-if multirate
-   ysize = erkSize;
-   yTypical = P_ERK.solver.yTypical;
-else
-    ysize = length(yTypical);
-end
-%h_ = 1e-5;
-%H_ = 1e-5;
-[sol_,  PERS] = solve_sys(t, relTol, step_rejected_, PERS);
-% while t_ < tEnd
-%     
-%     ii_ = PERS.ERK.stats.acceptedIter;
-%     if(rem(ii_, 1000)==0) % for displaying progress
-%         
-%          toc, t_, H_, h_
-%         
-%     end
-% 
-% %     if (h_ < 5e-5)
-% %         stop = 0 ;
-% %         [H_ h_ step_rejected_]
-% %     end
-% 
-%     
-%     % Calculate the solution
-%     [sol_,  PERS] = solve_sys(...
-%         [t_ t_ + H_], relTol, step_rejected_, PERS);
-%     %dbstop if warning
-%     % calculate the error
-% %     [eEst_, eI] = ee_skelboe2000(...
-% %         [y_(1:ysize,:) sol_(1:ysize)], dt_, relTol, yTypical);
-% %     PERS.CELL.sys.eEst = eEst_;
-%     % calculate the macro H_ and micro h_ time steps
-%      % we do not change macro time step if micro time step was not fine
-%      % enough
-% %     if any(isnan(sol_(erkSize+1:end)))
-% %         H_ = dt_(end);
-% %         step_rejected_ = true;
-% %     else
-% %    [H_,  step_rejected_, P_ERK.controller] = ec_h211b(dt_, ...
-% %        max(PERS.CELL.controller.eEst, eEst_),...
-% %        P_ERK.controller);
-% %    end
-%    % k =  1/(H_/PERS.CELL.controller.eEst)^2;
-%     %[eEst_ eEst_*k]
-%    % if ~isnan(eEst_)
-%         eEst_ = max(PERS.ERK.controller.eEst,PERS.CELL.controller.eEst);
-%    % end
-%     [H_,  step_rejected_, P_ERK.controller] = ec_h211b(dt_, ...
-%         eEst_,...
-%         P_ERK.controller);
-% 
-%     
-% %     if (multirate) %ec_h211b_hmicro
-% %         [h_ P_CELL.controller] = ec_classical(H_,...
-% %             max(PERS.CELL.controller.eEst, eEst_),...
-% %             P_CELL.controller);
-% %         PERS.CELL.sys.h = h_; % suggested micro time step
-% %         PERS.CELL.sys.m = P_CELL.controller.m; % suggensted n of intervals
-% % 
-% %     %    [H_ h_ step_rejected_]
-% %     end
-% %        [H_ h_ step_rejected_ P_CELL.controller] = ec_classical_comb(...
-% %            dt_(end),...
-% %             max(PERS.CELL.controller.eEst, eEst_),...
-% %             P_CELL.controller);
-% %         PERS.CELL.sys.h = h_;
-% %         PERS.CELL.sys.m = P_CELL.controller.m;
-% 
-%     if (~step_rejected_)
-%         t_ = t_ + dt_(end);
-%         dt_=circshift(dt_,[0,-1]);
-%         y_=circshift(y_,[0,-1]);
-%         y_(:,end) = sol_;
-%     end
-%     dt_(end) = H_;
-%     % Ensure that we dont leave the interval
-%     if t_ + H_ > tEnd  
-%         H_ = tEnd-t_;
-%     end
-%     
-%     % add check up for memory allocation in the solution vectors
-%     
+% if multirate
+%    ysize = erkSize;
+%    yTypical = P_ERK.solver.yTypical;
+% else
+%     ysize = length(yTypical);
 % end
 
-% fill in return values
-i_ = PERS.ERK.stats.acceptedIter;
-y_erk = PERS.ERK.sol.y(:, 1:i_+1);
-t_erk = [0 cumsum(PERS.ERK.sol.dt(1:i_))];
-stats_erk = PERS.ERK.stats;
 
-i_ = PERS.CELL.stats.acceptedIter;
-y_cell = PERS.CELL.sol.y(:, 1:i_+1);
-t_cell = [0 cumsum(PERS.CELL.sol.dt(1:i_))];
-stats_cell = PERS.CELL.stats;
+if(strcmp(iterMethod,'Jac'))
+    SYSTEM = jac_iter(t, relTol, SYSTEM); %single rate
+elseif(strcmp(iterMethod,'GSCELLFirst'))
+    SYSTEM = gs_cell_first_iter(t, relTol, SYSTEM); %single rate
+elseif(strcmp(iterMethod,'GSERKFirst'))
+    SYSTEM = gs_erk_first_iter(t, relTol, SYSTEM); %single rate
+elseif(strcmp(iterMethod,'GSSlowFirst'))
+    SYSTEM = gs_slow_first_iter(t, relTol, SYSTEM); %multirate
+elseif(strcmp(iterMethod,'GSFastFirst'))
+    SYSTEM = gs_fast_first_iter(t, relTol, SYSTEM); %multirate
+else
+    fprintf('Wrong iteration method');
+end
+
+
+% fill in return values
+i_ = SYSTEM.ERK.stats.acceptedIter;
+y_erk = SYSTEM.ERK.sol.y(:, 1:i_+1);
+t_erk = [0 cumsum(SYSTEM.ERK.sol.dt(1:i_))];
+stats_erk = SYSTEM.ERK.stats;
+
+i_ = SYSTEM.CELL.stats.acceptedIter;
+y_cell = SYSTEM.CELL.sol.y(:, 1:i_+1);
+t_cell = [0 cumsum(SYSTEM.CELL.sol.dt(1:i_))];
+stats_cell = SYSTEM.CELL.stats;
 
 % 
  fprintf('%-20s \t %-8s \t %-8s\n',sprintf('System'), 'Erk','HH')
 % 
  fprintf('%-20s \t %-8d \t %-8d\n','numjac calls', ...
-     PERS.ERK.stats.numjac, PERS.CELL.stats.numjac)
+     SYSTEM.ERK.stats.numjac, SYSTEM.CELL.stats.numjac)
 % 
  fprintf('%-20s \t %-8d \t %-8d\n','n ode by numjac', ...
-     PERS.ERK.stats.n_ode_numjac, PERS.CELL.stats.n_ode_numjac)
+     SYSTEM.ERK.stats.n_ode_numjac, SYSTEM.CELL.stats.n_ode_numjac)
 % 
  fprintf('%-20s \t %-8d \t %-8d\n','n ode by iterations',...
-     PERS.ERK.stats.n_ode_iter, PERS.CELL.stats.n_ode_iter)
+     SYSTEM.ERK.stats.n_ode_iter, SYSTEM.CELL.stats.n_ode_iter)
 %
   fprintf('%-20s \t %-8d \t %-8d\n','accepted calls', ...
-     PERS.ERK.stats.acceptedIter, PERS.CELL.stats.acceptedIter)
+     SYSTEM.ERK.stats.acceptedIter, SYSTEM.CELL.stats.acceptedIter)
 %
   fprintf('%-20s \t %-8d \t %-8d\n','refined calls', ...
-     PERS.ERK.stats.refinedIter, PERS.CELL.stats.refinedIter)
+     SYSTEM.ERK.stats.refinedIter, SYSTEM.CELL.stats.refinedIter)
  %
   fprintf('%-20s \t %-8d \t %-8d\n','rejected calls', ...
-     PERS.ERK.stats.rejectedIter, PERS.CELL.stats.rejectedIter)
+     SYSTEM.ERK.stats.rejectedIter, SYSTEM.CELL.stats.rejectedIter)
 end

@@ -64,7 +64,7 @@ while t_ < tEnd
         [y_ SOL], dt_, relTol,  SYS_PERS.solver.yTypical);
     
     % Update time and timestep
-    [h_,  S_PERS_.step_rejected, C_PERS_] = ec_h211b(...
+    [h_,  S_PERS_.step_rejected, C_PERS_] = C_PERS_.fn(...
         dt_, eEst, C_PERS_ );
     
     if (S_PERS_.step_rejected)
