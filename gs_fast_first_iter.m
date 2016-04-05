@@ -2,7 +2,7 @@ function SYSTEM = gs_fast_first_iter(t, relTol, SYSTEM)
 
     function [H STEP_REJECTED PERSISTENT] = ec_cell( DT, E_EST, PERSISTENT)
         [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
-            DT, E_EST, PERSISTENT);
+            DT, max(E_EST, SYSTEM.ERK.controller.eEst), PERSISTENT);
     end
 
     function [H STEP_REJECTED PERSISTENT] = ec_erk( DT,  E_EST, PERSISTENT)

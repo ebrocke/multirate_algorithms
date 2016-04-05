@@ -12,8 +12,8 @@ function SYSTEM = gs_erk_first_iter(t, relTol, SYSTEM)
 
 
 step_rejected = false;
-SYSTEM.CELL.sys.isolver_hdl = @solve_one_step;
-SYSTEM.ERK.sys.isolver_hdl = @solve_one_step;
+isolver_cell = @solve_one_step;
+isolver_erk = @solve_one_step;
 SYSTEM.CELL.controller.fn = @ec_cell;
 SYSTEM.ERK.controller.fn = @ec_erk;
 
@@ -41,29 +41,29 @@ while t_ < t(2)
     
     cellTilde = approximate(t_cell, y_cell, -H_ );
         
-    [out, SYSTEM] = erk_first([t_ t_+H_], ...
-        {[-H_ t_cell], [cellTilde; y_cell]},...
-        relTol, SYSTEM);
-    
-%     [Y1, SYSTEM.ERK] = isolver_erk( [t_ t_+H_], ...
+%     [out, SYSTEM] = erk_first([t_ t_+H_], ...
 %         {[-H_ t_cell], [cellTilde; y_cell]},...
-%         relTol, ...
-%         SYSTEM.ERK);
-%     
-%     if any(isnan(Y1))
-%         erk_vars = [NaN NaN];
-%         %display('CellFirst:: varsTilde is NaN')
-%     else
-%         [fracTilde, caiTilde] = feval(SYSTEM.ERK.sys.exch_hdl, Y1);
-%         erk_vars = [fracTilde caiTilde*1e3];
-%     end
-%     
-%     [Y2, SYSTEM.CELL] = isolver_cell([t_ t_+H_],...
-%         {[], erk_vars}, ...
-%         relTol,...
-%         SYSTEM.CELL);
-%     
-%     out = [Y1; Y2];
+%         relTol, SYSTEM);
+    
+    [Y1, SYSTEM.ERK] = isolver_erk( [t_ t_+H_], ...
+        {[-H_ t_cell], [cellTilde; y_cell]},...
+        relTol, ...
+        SYSTEM.ERK);
+    
+    if any(isnan(Y1))
+        erk_vars = [NaN NaN];
+        %display('CellFirst:: varsTilde is NaN')
+    else
+        [fracTilde, caiTilde] = feval(SYSTEM.ERK.sys.exch_hdl, Y1);
+        erk_vars = [fracTilde caiTilde*1e3];
+    end
+    
+    [Y2, SYSTEM.CELL] = isolver_cell([t_ t_+H_],...
+        {[], erk_vars}, ...
+        relTol,...
+        SYSTEM.CELL);
+    
+    out = [Y1; Y2];
     
     if (any(isnan(out)))
         step_rejected = true;

@@ -12,10 +12,10 @@ function SYSTEM = gs_cell_first_iter(t, relTol, SYSTEM)
 
 
 step_rejected = false;
-%isolver_cell = @solve_one_step;
-%isolver_erk = @solve_one_step;
-SYSTEM.CELL.sys.isolver_hdl = @solve_one_step;
-SYSTEM.ERK.sys.isolver_hdl = @solve_one_step;
+isolver_cell = @solve_one_step;
+isolver_erk = @solve_one_step;
+%SYSTEM.CELL.sys.isolver_hdl = @solve_one_step;
+%SYSTEM.ERK.sys.isolver_hdl = @solve_one_step;
 SYSTEM.CELL.controller.fn = @ec_cell;
 SYSTEM.ERK.controller.fn = @ec_erk;
 
@@ -43,32 +43,32 @@ while t_ < t(2)
     
     erkTilde = approximate(t_erk, y_erk, -H_);
     
-    [out, SYSTEM] = cell_first([t_ t_+H_], ...
-        {[-H_ t_erk], [erkTilde; y_erk]},...
-        relTol, SYSTEM);
+%     [out, SYSTEM] = cell_first([t_ t_+H_], ...
+%         {[-H_ t_erk], [erkTilde; y_erk]},...
+%         relTol, SYSTEM);
     
     
-%     [Y2, SYSTEM.CELL] = isolver_cell([t_ t_+H_], ...
-%         {[-H_ t_erk], [erkTilde; y_erk]}, ...
-%         relTol,...
-%         SYSTEM.CELL);
-%     
-%     if any(isnan(Y2))
-%         cell_vars = [NaN NaN];
-%         %display('CellFirst:: varsTilde is NaN')
-%     else
-%         erkTilde = approximate(t_erk, y_erk, -(t(2)-t(1)));
-%         [caFlux] = feval(SYSTEM.CELL.sys.exch_hdl,...
-%             Y2, erkTilde(2)*1e-3);
-%         cell_vars = [0 caFlux];
-%     end
-%     
-%     [Y1, SYSTEM.ERK] = isolver_erk( [t_ t_+H_], ...
-%         { [], cell_vars},...
-%         relTol, ...
-%         SYSTEM.ERK);
-%     
-%     out = [Y1; Y2];
+    [Y2, SYSTEM.CELL] = isolver_cell([t_ t_+H_], ...
+        {[-H_ t_erk], [erkTilde; y_erk]}, ...
+        relTol,...
+        SYSTEM.CELL);
+    
+    if any(isnan(Y2))
+        cell_vars = [NaN NaN];
+        %display('CellFirst:: varsTilde is NaN')
+    else
+        erkTilde = approximate(t_erk, y_erk, -(t(2)-t(1)));
+        [caFlux] = feval(SYSTEM.CELL.sys.exch_hdl,...
+            Y2, erkTilde(2)*1e-3);
+        cell_vars = [0 caFlux];
+    end
+    
+    [Y1, SYSTEM.ERK] = isolver_erk( [t_ t_+H_], ...
+        { [], cell_vars},...
+        relTol, ...
+        SYSTEM.ERK);
+    
+    out = [Y1; Y2];
     
     if (any(isnan(out)))
         step_rejected = true;
