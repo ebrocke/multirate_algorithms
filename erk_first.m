@@ -1,4 +1,18 @@
 function [out SYSTEM] = erk_first(t, vars, relTol, SYSTEM)
+
+    function [H STEP_REJECTED PERSISTENT] = ec_cell( DT, E_EST, PERSISTENT)
+        [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
+            DT,  max(E_EST, SYSTEM.ERK.controller.eEst), PERSISTENT);
+    end
+
+    function [H STEP_REJECTED PERSISTENT] = ec_erk( DT,  E_EST, PERSISTENT)
+        [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
+            DT, max(E_EST, SYSTEM.CELL.controller.eEst), PERSISTENT);
+    end
+
+SYSTEM.CELL.controller.fn = @ec_cell;
+SYSTEM.ERK.controller.fn = @ec_erk;
+
 %t_erk = vars{1};
 %y_erk = vars{2};
 t_cell = vars{1};
