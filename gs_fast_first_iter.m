@@ -1,5 +1,5 @@
 function SYSTEM = gs_fast_first_iter(t, relTol, SYSTEM)
-
+step_rejected = false;
 t_ = t(1);
 ii_ = 0;
 % H_ is a macro time step
