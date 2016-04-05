@@ -8,9 +8,9 @@ erkfirst=0;
 while t_ < t(2)
     
     [y_erk t_erk SYSTEM.ERK] = get_exchanged_vector(...
-        @get_erk_exchaged_vector, step_rejected, SYSTEM.ERK);
+        @get_erk_exchaged_vector, step_rejected, SYSTEM.ERK,{});
     [y_cell t_cell SYSTEM.CELL] = get_exchanged_vector( ...
-        @get_cell_exchaged_vector, step_rejected, SYSTEM.CELL);
+        @get_cell_exchaged_vector, step_rejected, SYSTEM.CELL, {t_erk, y_erk});
     
     
     h_cell = get_h_optimal(SYSTEM.CELL);
