@@ -5,8 +5,7 @@ function SYSTEM = gs_slow_first_iter(t, relTol, SYSTEM)
         eEst = circshift(eEst,[0 1]);
         eEst(1) = R_SYSTEM.controller.eEst;
         if(length(DT) > 2)
-            t_ = [0 DT(end-1)];
-            eEst_ = approximate(t_,eEst(1:2),-DT(end));
+            eEst_ = approximate([0 DT(end-1)],eEst(1:2)',-DT(end));
         else 
             eEst_ = eEst(1);
         end
@@ -36,8 +35,8 @@ while t_ < t(2)
     h_cell = get_h_optimal(SYSTEM.CELL);
     h_erk = get_h_optimal(SYSTEM.ERK);
     
-    if(rem(ii_, 1000)==0) % for displaying progress
-        [toc, t_, h_cell h_erk ]
+    if(rem(ii_, 100)==0) % for displaying progress
+        [toc, t_, h_cell, h_erk ]
     end
     
     if (h_cell > h_erk)
@@ -48,7 +47,7 @@ while t_ < t(2)
         %erkTilde = approximate(t_erk, y_erk, -H_);
         [out SYSTEM] = cell_first([t_ t_+H_],...
             {t_erk, y_erk, t_cell, y_cell},...
-            relTol, SYSTEM, {@ec_erk, @ec_cell});
+            relTol, SYSTEM, {@ec, @ec});
     else
         H_ = h_erk;
         t_ = SYSTEM.ERK.controller.t(end);

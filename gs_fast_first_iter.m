@@ -62,7 +62,7 @@ while t_ < t(2)
         
         [out SYSTEM] = erk_first([t_ t_+H_],...
             {t_erk, y_erk, t_cell, y_cell}, ...
-            relTol, SYSTEM, {@ec_erk, @ec_cell});
+            relTol, SYSTEM, {@ec, @ec});
         
         cellfirst = 0;
         erkfirst = 1;
