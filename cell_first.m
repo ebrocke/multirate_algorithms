@@ -1,13 +1,16 @@
-function [out SYSTEM] = cell_first(t, vars, relTol, SYSTEM)
+function [out SYSTEM] = cell_first(t, vars, relTol, SYSTEM, ec_fn)
+ec_erk_local = ec_fn{1};
+ec_cell_local = ec_fn{2};
+
 
     function [H STEP_REJECTED PERSISTENT] = ec_cell( DT, E_EST, PERSISTENT)
-        [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
-            DT, max(E_EST, SYSTEM.ERK.controller.eEst), PERSISTENT);
+        [H,  STEP_REJECTED, PERSISTENT] = ec_cell_local(...
+            DT, E_EST, PERSISTENT, SYSTEM.ERK);
     end
 
     function [H STEP_REJECTED PERSISTENT] = ec_erk( DT,  E_EST, PERSISTENT)
-        [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
-            DT, max(E_EST, SYSTEM.CELL.controller.eEst), PERSISTENT);
+        [H,  STEP_REJECTED, PERSISTENT] = ec_erk_local(...
+            DT, E_EST, PERSISTENT, SYSTEM.CELL);
     end
 
 SYSTEM.CELL.controller.fn = @ec_cell;

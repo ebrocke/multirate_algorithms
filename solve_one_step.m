@@ -4,14 +4,15 @@ function [SOL, SYS_PERS]=solve_one_step(t, ...
     SYS_PERS)
 
 % return NaN if previous solver failed
-varsTilde = vars{2};
+%varsTilde = vars{2};
 solve = true;
-if (any(isnan(varsTilde)))
+if (any(isnan(vars{2})))
     %display('solver_one_step:: varsTilde is NaN')
     SOL = NaN(size(SYS_PERS.sol.y,1),1);
     solve = false;
    % return;
 end
+
 % aligns solution according to interval t
 SYS_PERS = update(t, SYS_PERS);
 % controller workspace
@@ -36,6 +37,7 @@ t_ = C_PERS_.t(end);
 h_ = dt_(end);
 
 if solve
+    varsTilde = approximate(vars{1}, vars{2}, -(t(2)-t(1)));
     [SOL, stat(1), stat(2), stat(3), S_PERS_] = solver([t_ t_+h_],...
         y_, dt_, ...
         SYS_PERS.sys.ode_hdl,...

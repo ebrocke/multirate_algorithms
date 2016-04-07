@@ -1,7 +1,21 @@
 function SYSTEM = gs_slow_first_iter(t, relTol, SYSTEM)
+    
+    function [H STEP_REJECTED PERSISTENT] = ec_cell( DT, E_EST, PERSISTENT, R_SYSTEM)
+        [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
+            DT,  max(E_EST, R_SYSTEM.controller.eEst), PERSISTENT);
+    end
+
+    function [H STEP_REJECTED PERSISTENT] = ec_erk( DT,  E_EST, PERSISTENT, R_SYSTEM)
+        [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
+            DT, max(E_EST, R_SYSTEM.controller.eEst), PERSISTENT);
+    end
+
 step_rejected = false;
 t_ = t(1);
 ii_ = 0;
+
+%SYSTEM.CELL.controller.fn = @ec_cell;
+%SYSTEM.ERK.controller.fn = @ec_erk;
 % H_ is a macro time step
 
 while t_ < t(2)
@@ -24,19 +38,19 @@ while t_ < t(2)
         t_ = SYSTEM.CELL.controller.t(end);
         SYSTEM.CELL.sys.isolver_hdl = @solve_one_step;
         SYSTEM.ERK.sys.isolver_hdl = @solve_adaptive_step;
-        erkTilde = approximate(t_erk, y_erk, -H_);
+        %erkTilde = approximate(t_erk, y_erk, -H_);
         [out SYSTEM] = cell_first([t_ t_+H_],...
-            {[-H_ t_erk], [erkTilde; y_erk], t_cell, y_cell},...
-            relTol, SYSTEM);
+            {t_erk, y_erk, t_cell, y_cell},...
+            relTol, SYSTEM, {@ec_erk, @ec_cell});
     else
         H_ = h_erk;
         t_ = SYSTEM.ERK.controller.t(end);
         SYSTEM.CELL.sys.isolver_hdl = @solve_adaptive_step;
         SYSTEM.ERK.sys.isolver_hdl = @solve_one_step;
-        cellTilde = approximate(t_cell, y_cell, -H_ );
+        %cellTilde = approximate(t_cell, y_cell, -H_ );
         [out SYSTEM] = erk_first([t_ t_+H_],...
-            {t_erk, y_erk, [-H_ t_cell], [cellTilde; y_cell]},...
-            relTol, SYSTEM);
+            {t_erk, y_erk, t_cell, y_cell},...
+            relTol, SYSTEM, {@ec_erk, @ec_cell});
     end
     
     if (any(isnan(out)))
