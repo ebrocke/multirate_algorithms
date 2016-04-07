@@ -15,8 +15,8 @@ SYSTEM.ERK.controller.fn = @ec_erk;
 
 t_erk = vars{1};
 y_erk = vars{2};
-%t_cell = vars{3};
-%y_cell = vars{4};
+t_cell = vars{3};
+y_cell = vars{4};
 isolver_cell = SYSTEM.CELL.sys.isolver_hdl;
 isolver_erk = SYSTEM.ERK.sys.isolver_hdl;
 
@@ -35,7 +35,7 @@ else
 end
     
 [Y1, SYSTEM.ERK] = isolver_erk( t, ...
-    { [], cell_vars},...
+    { [-(t(2)-t(1)), t_cell], [cell_vars; y_cell]},...
     relTol, ...
     SYSTEM.ERK);
 

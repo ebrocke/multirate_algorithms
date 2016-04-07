@@ -13,10 +13,10 @@ function [out SYSTEM] = erk_first(t, vars, relTol, SYSTEM)
 SYSTEM.CELL.controller.fn = @ec_cell;
 SYSTEM.ERK.controller.fn = @ec_erk;
 
-%t_erk = vars{1};
-%y_erk = vars{2};
-t_cell = vars{1};
-y_cell = vars{2};
+t_erk = vars{1};
+y_erk = vars{2};
+t_cell = vars{3};
+y_cell = vars{4};
 isolver_cell = SYSTEM.CELL.sys.isolver_hdl;
 isolver_erk = SYSTEM.ERK.sys.isolver_hdl;
 
@@ -33,7 +33,7 @@ else
 end
 
 [Y2, SYSTEM.CELL] = isolver_cell(t,...
-    {[], erk_vars}, ...
+    {[-(t(2)-t(1)), t_erk], [erk_vars; y_erk]}, ...
     relTol,...
     SYSTEM.CELL);
 out = [Y1; Y2];

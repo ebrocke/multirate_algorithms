@@ -24,19 +24,19 @@ while t_ < t(2)
         t_ = SYSTEM.CELL.controller.t(end);
         SYSTEM.CELL.sys.isolver_hdl = @solve_one_step;
         SYSTEM.ERK.sys.isolver_hdl = @solve_adaptive_step;
-        
-        [out SYSTEM] = CellFirst([t_ t_+H_],...
-            {t_erk, y_erk, t_cell, y_cell},...
-            relTol, step_rejected, SYSTEM);
+        erkTilde = approximate(t_erk, y_erk, -H_);
+        [out SYSTEM] = cell_first([t_ t_+H_],...
+            {[-H_ t_erk], [erkTilde; y_erk], t_cell, y_cell},...
+            relTol, SYSTEM);
     else
         H_ = h_erk;
         t_ = SYSTEM.ERK.controller.t(end);
         SYSTEM.CELL.sys.isolver_hdl = @solve_adaptive_step;
         SYSTEM.ERK.sys.isolver_hdl = @solve_one_step;
-        
-        [out SYSTEM] = ERKFirst([t_ t_+H_],...
-            {t_erk, y_erk, t_cell, y_cell},...
-            relTol, step_rejected, SYSTEM);
+        cellTilde = approximate(t_cell, y_cell, -H_ );
+        [out SYSTEM] = erk_first([t_ t_+H_],...
+            {t_erk, y_erk, [-H_ t_cell], [cellTilde; y_cell]},...
+            relTol, SYSTEM);
     end
     
     if (any(isnan(out)))
