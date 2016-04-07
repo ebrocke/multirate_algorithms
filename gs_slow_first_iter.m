@@ -1,13 +1,20 @@
 function SYSTEM = gs_slow_first_iter(t, relTol, SYSTEM)
-    
-    function [H STEP_REJECTED PERSISTENT] = ec_cell( DT, E_EST, PERSISTENT, R_SYSTEM)
+ eEst = [NaN NaN NaN];
+ 
+    function [H STEP_REJECTED PERSISTENT] = ec( DT, E_EST, PERSISTENT, R_SYSTEM)
+        eEst = circshift(eEst,[0 1]);
+        eEst(1) = R_SYSTEM.controller.eEst;
+        if(length(DT) > 2)
+            t_ = [0 DT(end-1)];
+            eEst_ = approximate(t_,eEst(1:2),-DT(end));
+        else 
+            eEst_ = eEst(1);
+        end
         [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
-            DT,  max(E_EST, R_SYSTEM.controller.eEst), PERSISTENT);
-    end
-
-    function [H STEP_REJECTED PERSISTENT] = ec_erk( DT,  E_EST, PERSISTENT, R_SYSTEM)
-        [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
-            DT, max(E_EST, R_SYSTEM.controller.eEst), PERSISTENT);
+            DT,  max(E_EST, eEst_), PERSISTENT);
+        if STEP_REJECTED
+            eEst = circshift(eEst,[0 -1]);
+        end
     end
 
 step_rejected = false;
@@ -50,7 +57,7 @@ while t_ < t(2)
         %cellTilde = approximate(t_cell, y_cell, -H_ );
         [out SYSTEM] = erk_first([t_ t_+H_],...
             {t_erk, y_erk, t_cell, y_cell},...
-            relTol, SYSTEM, {@ec_erk, @ec_cell});
+            relTol, SYSTEM, {@ec, @ec});
     end
     
     if (any(isnan(out)))

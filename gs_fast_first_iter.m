@@ -1,12 +1,7 @@
 function SYSTEM = gs_fast_first_iter(t, relTol, SYSTEM)
-    function [H STEP_REJECTED PERSISTENT] = ec_cell( DT, E_EST, PERSISTENT, R_SYSTEM)
+    function [H STEP_REJECTED PERSISTENT] = ec( DT, E_EST, PERSISTENT, R_SYSTEM)
         [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
             DT,  max(E_EST, R_SYSTEM.controller.eEst), PERSISTENT);
-    end
-
-    function [H STEP_REJECTED PERSISTENT] = ec_erk( DT,  E_EST, PERSISTENT, R_SYSTEM)
-        [H,  STEP_REJECTED, PERSISTENT] = ec_h211b(...
-            DT, max(E_EST, R_SYSTEM.controller.eEst), PERSISTENT);
     end
 step_rejected = false;
 t_ = t(1);
@@ -49,7 +44,7 @@ while t_ < t(2)
         
         [out SYSTEM] = cell_first([t_ t_+H_],...
             {t_erk, y_erk, t_cell,y_cell},...
-            relTol, SYSTEM, {@ec_erk, @ec_cell});
+            relTol, SYSTEM, {@ec, @ec});
         
         cellfirst = 1;
         erkfirst = 0;
